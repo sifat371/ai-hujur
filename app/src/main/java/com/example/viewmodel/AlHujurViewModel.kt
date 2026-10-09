@@ -534,6 +534,8 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             delay(1200) // gentle natural delay
             val aiResponse = GeminiClient.generateModeratorSummary(question)
+            // Do not publish a service error as though it were an answer to a question.
+            if (aiResponse == GeminiClient.UNAVAILABLE_MESSAGE) return@launch
             val aiReply = ForumReply(
                 id = "rep_ai_" + System.currentTimeMillis(),
                 authorName = "AI (যাচাই করা নয়)",

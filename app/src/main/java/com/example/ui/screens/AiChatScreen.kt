@@ -716,7 +716,7 @@ private fun ChatInputBar(
 
             // Respectful advisory footer
             Text(
-                text = "জ্ঞাতব্য: Scholar AI কুরআন ও নির্ভরযোগ্য হাদিসের ভিত্তিতে দিকনির্দেশনা দেয়। ব্যক্তিগত ফতোয়ায় উলামাদের সাথে পরামর্শ কাম্য।",
+                text = "জ্ঞাতব্য: এআই উত্তরে ভুল বা ভুল সূত্র থাকতে পারে। গুরুত্বপূর্ণ মাসআলা ও দলিল যোগ্য আলেমের কাছে যাচাই করুন।",
                 color = TextMuted.copy(alpha = 0.7f),
                 fontSize = 9.5.sp,
                 textAlign = TextAlign.Center,
