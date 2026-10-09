@@ -248,50 +248,7 @@ object IslamicRepository {
         )
     )
 
-    fun getRamadan30Days(): List<RamadanCalendarDay> {
-        val days = mutableListOf<RamadanCalendarDay>()
-        val dayNames = listOf("সোম", "মঙ্গল", "বুধ", "বৃহস্পতি", "শুক্র", "শনি", "রবি")
-
-        for (i in 1..30) {
-            val dayOfWeek = dayNames[(i + 2) % 7]
-            val sehriMins = 4 * 60 + 55 - (i * 1) // gradual progression in Dhaka
-            val iftarMins = 18 * 60 + 12 + (i * 1)
-
-            val sH = sehriMins / 60
-            val sM = sehriMins % 60
-            val iH = (iftarMins / 60) - 12
-            val iM = iftarMins % 60
-
-            val sehriStr = String.format(Locale.US, "%02d:%02d পূর্বাহ্ন", sH, sM)
-            val iftarStr = String.format(Locale.US, "%02d:%02d অপরাহ্ন", iH, iM)
-
-            days.add(
-                RamadanCalendarDay(
-                    dayNumber = i,
-                    dateString = "${toBengaliNumber(i)} রমজান",
-                    dayOfWeek = dayOfWeek,
-                    sehriTime = sehriStr,
-                    iftarTime = iftarStr,
-                    isToday = (i == 14)
-                )
-            )
-        }
-        return days
-    }
-
-    private fun toBengaliNumber(number: Int): String {
-        val bengaliDigits = arrayOf('০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯')
-        val str = number.toString()
-        val builder = StringBuilder()
-        for (ch in str) {
-            if (ch in '0'..'9') {
-                builder.append(bengaliDigits[ch - '0'])
-            } else {
-                builder.append(ch)
-            }
-        }
-        return builder.toString()
-    }
+    // Verified Ramadan timetables must come from a validated regional source.
 
     val libraryItems = listOf(
         LibraryItem(
