@@ -19,8 +19,11 @@ jobs:
       # GitHub Ubuntu runners already provide Android command-line tools.
       - name: Install Android SDK
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager 'platforms;android-36.1' 'build-tools;36.0.0'
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -n 1)
+          test -x "$SDKMANAGER"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --install 'platforms;android-36.1' 'build-tools;36.0.0'
       - uses: gradle/actions/setup-gradle@v4
       - name: Check debug build and unit tests
         run: ./gradlew --no-daemon :app:assembleDebug :app:testDebugUnitTest
