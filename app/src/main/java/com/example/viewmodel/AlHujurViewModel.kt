@@ -10,6 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.api.GeminiClient
 import com.example.data.local.AppDatabase
+import com.example.data.local.UserSettingsStore
 import com.example.data.local.entity.DailyAmalEntity
 import com.example.data.local.entity.DhikrLogEntity
 import com.example.data.local.entity.QuranLogEntity
@@ -34,6 +35,7 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
 
     // --- ROOM DATABASE REPOSITORY ---
     private val database = AppDatabase.getInstance(application)
+    private val settings = UserSettingsStore(application)
     val amalRepository = AmalRepository(database.amalDao())
 
     // --- HOME SCREEN STATE ---
@@ -41,7 +43,7 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     val dailyNasihotIndex: StateFlow<Int> = _dailyNasihotIndex.asStateFlow()
 
     // Location for prayer times calculation
-    private val _currentLocation = MutableStateFlow(LocationService.DHAKA)
+    private val _currentLocation = MutableStateFlow(settings.location)
     val currentLocation: StateFlow<UserLocationInfo> = _currentLocation.asStateFlow()
 
     private val _isLocating = MutableStateFlow(false)
@@ -49,9 +51,9 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
 
     private val _prayerTimes = MutableStateFlow(
         IslamicRepository.getTodayPrayerTimes(
-            LocationService.DHAKA.latitude,
-            LocationService.DHAKA.longitude,
-            LocationService.DHAKA.cityName
+            _currentLocation.value.latitude,
+            _currentLocation.value.longitude,
+            _currentLocation.value.cityName
         )
     )
     val prayerTimes: StateFlow<List<PrayerTimeInfo>> = _prayerTimes.asStateFlow()
@@ -106,7 +108,7 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     // --- AI CHAT STATE ---
     private val defaultScholarWelcome = ChatMessage(
         id = "welcome",
-        text = "আসসালামু আলাইকুম ওয়া রাহমাতুল্লাহি ওয়া বারাকাতুহু।\nবিসমিল্লাহির রাহমানির রাহীম।\n\nআমি 'Scholar AI' (স্কলার এআই)—আপনার নির্ভরযোগ্য ইসলামিক পণ্ডিত ও দ্বীনি মাসআলা সহায়ক। পবিত্র কুরআন ও সহীহ সুন্নাহর আলোকে রোজা, নামাজ, যাকাত, দৈনন্দিন আমল বা যেকোনো শারঈ জিজ্ঞাসা শুদ্ধ বাংলায় করতে পারেন। আল্লাহ আমাদের সঠিক বুঝ দান করুন।",
+        text = "আসসালামু আলাইকুম ওয়া রাহমাতুল্লাহি ওয়া বারাকাতুহু।\nবিসমিল্লাহির রাহমানির রাহীম।\n\nআমি 'Scholar AI' (স্কলার এআই)—একটি এআই সহায়ক, যোগ্য আলেমের বিকল্প নই। পবিত্র কুরআন ও সহীহ সুন্নাহর আলোকে রোজা, নামাজ, যাকাত, দৈনন্দিন আমল বা যেকোনো শারঈ জিজ্ঞাসা শুদ্ধ বাংলায় করতে পারেন। আল্লাহ আমাদের সঠিক বুঝ দান করুন।",
         isFromUser = false
     )
 
@@ -115,9 +117,6 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
 
     private val _isAiThinking = MutableStateFlow(false)
     val isAiThinking: StateFlow<Boolean> = _isAiThinking.asStateFlow()
-
-    private val _isVoiceRecording = MutableStateFlow(false)
-    val isVoiceRecording: StateFlow<Boolean> = _isVoiceRecording.asStateFlow()
 
     // --- COMMUNITY FORUM STATE ---
     private val _forumPosts = MutableStateFlow(IslamicRepository.initialForumPosts)
@@ -187,27 +186,27 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     val amalProgress: StateFlow<AmalDailyProgress> = _amalProgress.asStateFlow()
 
     // --- PROFILE & SETTINGS STATE ---
-    private val _userName = MutableStateFlow("হাসিবুল হাসান (বাংলাদেশ)")
+    private val _userName = MutableStateFlow(settings.userName)
     val userName: StateFlow<String> = _userName.asStateFlow()
 
-    private val _spiritualGoal = MutableStateFlow("এই রমজানে সম্পূর্ণ ৩০ পারা কুরআন খতম করা")
+    private val _spiritualGoal = MutableStateFlow(settings.spiritualGoal)
     val spiritualGoal: StateFlow<String> = _spiritualGoal.asStateFlow()
 
-    private val _prayerNotificationsEnabled = MutableStateFlow(true)
+    private val _prayerNotificationsEnabled = MutableStateFlow(settings.prayerNotificationsEnabled)
     val prayerNotificationsEnabled: StateFlow<Boolean> = _prayerNotificationsEnabled.asStateFlow()
 
-    private val _aiDailyRemindersEnabled = MutableStateFlow(true)
+    private val _aiDailyRemindersEnabled = MutableStateFlow(settings.aiDailyRemindersEnabled)
     val aiDailyRemindersEnabled: StateFlow<Boolean> = _aiDailyRemindersEnabled.asStateFlow()
 
-    private val _calculationMethod = MutableStateFlow("ইসলামিক ফাউন্ডেশন বাংলাদেশ (হানাফী)")
+    private val _calculationMethod = MutableStateFlow(settings.calculationMethod)
     val calculationMethod: StateFlow<String> = _calculationMethod.asStateFlow()
 
     // --- HIJRI CALENDAR STATE ---
-    private val _hijriOffsetDays = MutableStateFlow(0)
+    private val _hijriOffsetDays = MutableStateFlow(settings.hijriOffsetDays)
     val hijriOffsetDays: StateFlow<Int> = _hijriOffsetDays.asStateFlow()
 
     private val _currentHijriDate = MutableStateFlow(
-        com.example.data.service.HijriCalendarService.getTodayHijriDate(0)
+        com.example.data.service.HijriCalendarService.getTodayHijriDate(_hijriOffsetDays.value)
     )
     val currentHijriDate: StateFlow<HijriDateInfo> = _currentHijriDate.asStateFlow()
 
@@ -221,7 +220,7 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
         com.example.data.service.HijriCalendarService.getHijriMonthData(
             _currentHijriDate.value.year,
             _currentHijriDate.value.month,
-            0
+            _hijriOffsetDays.value
         )
     )
     val hijriMonthData: StateFlow<HijriMonthData> = _hijriMonthData.asStateFlow()
@@ -313,6 +312,7 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun setLocation(locationInfo: UserLocationInfo) {
+        settings.location = locationInfo
         _currentLocation.value = locationInfo
         _prayerTimes.value = IslamicRepository.getTodayPrayerTimes(
             latitude = locationInfo.latitude,
@@ -359,7 +359,8 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
 
     // --- HIJRI CALENDAR ACTIONS ---
     fun setHijriOffset(offset: Int) {
-        _hijriOffsetDays.value = offset
+        settings.hijriOffsetDays = offset
+        _hijriOffsetDays.value = settings.hijriOffsetDays
         refreshHijriData()
     }
 
@@ -483,7 +484,7 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
                 _chatMessages.value = _chatMessages.value + aiMsg
             } catch (e: Exception) {
                 val errorMsg = ChatMessage(
-                    text = GeminiClient.getOfflineScholarGuidance(userText),
+                    text = GeminiClient.UNAVAILABLE_MESSAGE,
                     isFromUser = false
                 )
                 _chatMessages.value = _chatMessages.value + errorMsg
@@ -495,23 +496,6 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
 
     fun clearChat() {
         _chatMessages.value = listOf(defaultScholarWelcome)
-    }
-
-    fun toggleVoiceRecording() {
-        if (_isVoiceRecording.value) {
-            // End recording and send prompt
-            _isVoiceRecording.value = false
-            val sampleQuestions = listOf(
-                "রমজানের শেষ দশকে ইতিকাফ ও সদকাতুল ফিতরের নিয়ম কী?",
-                "নামাজে একাগ্রতা ও খুশু-খুজু বাড়ানোর উপায় কী?",
-                "সফরে রোজা রাখা ও কাজা আদায় করার বিধান কী?",
-                "মনের দুশ্চিন্তা ও পেরেশানি দূর করার জন্য কোন দোয়াটি পড়ব?"
-            )
-            val selected = sampleQuestions.random()
-            sendChatMessage(selected, isVoice = true)
-        } else {
-            _isVoiceRecording.value = true
-        }
     }
 
     // --- COMMUNITY FORUM ACTIONS ---
@@ -552,11 +536,11 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
             val aiResponse = GeminiClient.generateModeratorSummary(question)
             val aiReply = ForumReply(
                 id = "rep_ai_" + System.currentTimeMillis(),
-                authorName = "AI Moderator",
+                authorName = "AI (যাচাই করা নয়)",
                 replyText = aiResponse,
                 timeAgo = "Just now",
                 isAiModerator = true,
-                verifiedReference = "Al-Hujur AI Scholarly Review"
+                verifiedReference = null
             )
 
             _forumPosts.value = _forumPosts.value.map { post ->
@@ -640,6 +624,7 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     // --- PROFILE & SETTINGS ACTIONS ---
     fun togglePrayerNotifications() {
         _prayerNotificationsEnabled.value = !_prayerNotificationsEnabled.value
+        settings.prayerNotificationsEnabled = _prayerNotificationsEnabled.value
         syncPrayerAlerts()
     }
 
@@ -676,12 +661,16 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
 
     fun toggleAiReminders() {
         _aiDailyRemindersEnabled.value = !_aiDailyRemindersEnabled.value
+        settings.aiDailyRemindersEnabled = _aiDailyRemindersEnabled.value
     }
 
     fun updateProfile(name: String, goal: String, calcMethod: String) {
         _userName.value = name
         _spiritualGoal.value = goal
         _calculationMethod.value = calcMethod
+        settings.userName = name
+        settings.spiritualGoal = goal
+        settings.calculationMethod = calcMethod
     }
 
     override fun onCleared() {

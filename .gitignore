@@ -16,3 +16,9 @@
 local.properties
 .env
 debug.keystore
+
+# Never check in credentials or upload signing material
+*.jks
+*.keystore
+**/google-services.json
+.env.*.local

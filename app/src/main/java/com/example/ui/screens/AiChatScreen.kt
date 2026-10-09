@@ -3,6 +3,11 @@ package com.example.ui.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.animation.core.*
@@ -53,9 +58,17 @@ fun AiChatScreen(
     val context = LocalContext.current
     val messages by viewModel.chatMessages.collectAsState()
     val isAiThinking by viewModel.isAiThinking.collectAsState()
-    val isRecordingVoice by viewModel.isVoiceRecording.collectAsState()
 
     var inputText by remember { mutableStateOf("") }
+    val voiceInputLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val recognized = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (!recognized.isNullOrBlank()) inputText = recognized
+        }
+    }
     var selectedCategory by remember { mutableStateOf("রোজা ও রমজান") }
     val listState = rememberLazyListState()
 
@@ -248,8 +261,20 @@ fun AiChatScreen(
                         inputText = ""
                     }
                 },
-                isRecordingVoice = isRecordingVoice,
-                onToggleVoice = { viewModel.toggleVoiceRecording() }
+                onToggleVoice = {
+                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "bn-BD")
+                        putExtra(RecognizerIntent.EXTRA_PROMPT, "বাংলায় প্রশ্ন বলুন")
+                    }
+                    try {
+                        voiceInputLauncher.launch(intent)
+                    } catch (_: ActivityNotFoundException) {
+                        Toast.makeText(context,
+                            "এই ফোনে ভয়েস ইনপুট সেবা পাওয়া যায়নি", Toast.LENGTH_LONG).show()
+                    }
+                }
             )
         }
     }
@@ -607,21 +632,8 @@ private fun ChatInputBar(
     inputText: String,
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
-    isRecordingVoice: Boolean,
     onToggleVoice: () -> Unit
 ) {
-    // Pulse animation for recording microphone button
-    val infiniteTransition = rememberInfiniteTransition(label = "mic_pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (isRecordingVoice) 1.22f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "mic_scale"
-    )
-
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = DeepNavy,
@@ -633,32 +645,6 @@ private fun ChatInputBar(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            if (isRecordingVoice) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color(0x33EF4444),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFEF4444))
-                        )
-                        Text(
-                            text = "আপনার প্রশ্ন শুনছি... শেষ করতে মাইক্রোফোনে পুনরায় চাপুন।",
-                            color = Color(0xFFFCA5A5),
-                            fontSize = 11.5.sp
-                        )
-                    }
-                }
-            }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -714,22 +700,15 @@ private fun ChatInputBar(
                     onClick = onToggleVoice,
                     modifier = Modifier
                         .size(48.dp)
-                        .scale(pulseScale)
                         .clip(CircleShape)
-                        .background(
-                            if (isRecordingVoice) Color(0xFFDC2626) else IslamicGold
-                        )
-                        .border(
-                            2.dp,
-                            if (isRecordingVoice) Color.White else BrightGold,
-                            CircleShape
-                        )
+                        .background(IslamicGold)
+                        .border(2.dp, BrightGold, CircleShape)
                         .testTag("voice_recording_mic_button")
                 ) {
                     Icon(
-                        imageVector = if (isRecordingVoice) Icons.Default.Stop else Icons.Default.Mic,
-                        contentDescription = "ভয়েস রেকর্ড করে জিজ্ঞাসা করুন",
-                        tint = if (isRecordingVoice) Color.White else MidnightBlue,
+                        imageVector = Icons.Default.Mic,
+                        contentDescription = "ভয়েস ইনপুট দিয়ে প্রশ্ন লিখুন",
+                        tint = MidnightBlue,
                         modifier = Modifier.size(24.dp)
                     )
                 }

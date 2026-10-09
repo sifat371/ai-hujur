@@ -39,7 +39,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "al_hujur_amal_database.db"
                 )
-                    .fallbackToDestructiveMigration()
+                    // Explicit migrations are mandatory; do not destroy user logs.
                     .build()
                 INSTANCE = instance
                 instance

@@ -11,6 +11,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.MainActivity
 import com.example.R
+import com.example.data.local.UserSettingsStore
 import java.util.Calendar
 import java.util.Locale
 
@@ -81,6 +82,11 @@ object PrayerNotificationScheduler {
         longitude: Double = LocationService.DHAKA.longitude,
         locationName: String = LocationService.DHAKA.cityName
     ) {
+        // Do not reschedule reminders when users have opted out.
+        if (!UserSettingsStore(context).prayerNotificationsEnabled) {
+            cancelAllPrayerAlerts(context)
+            return
+        }
         createNotificationChannel(context)
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return

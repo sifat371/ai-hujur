@@ -231,14 +231,14 @@
     When you consult the Scholar AI assistant with everyday Islamic queries:
   </p>
   <ul>
-    <li>The query text is sent securely via HTTPS to the Google Gemini API solely for natural language processing and retrieving verified Quranic verses and Sahih Hadith citations.</li>
+    <li>The query text is sent securely via HTTPS to the Google Gemini API solely for natural language processing and generating responses that may contain Quranic or Hadith references, which are not independently verified.</li>
     <li>No personally identifiable information (such as your phone number, real name, or location) is appended to AI requests.</li>
     <li>AI queries are not linked to your identity for profiling or behavioral tracking.</li>
   </ul>
 
   <h3>D. Personal Spiritual Data & Amal Logs (Local Only)</h3>
   <p>
-    Your daily spiritual records—including five-time prayer checkboxes, Quran recitation progress, digital Tasbeeh counts, and Ramadan fasting streaks—are stored in an encrypted/private SQLite database using Android Room directly in your device's isolated application sandbox.
+    Your daily spiritual records—including five-time prayer checkboxes, Quran recitation progress, digital Tasbeeh counts, and Ramadan fasting streaks—are stored in a private, app-sandboxed SQLite database using Android Room directly in your device's isolated application sandbox.
   </p>
   <ul>
     <li>This data never leaves your device.</li>
@@ -251,7 +251,7 @@
   </p>
   <ul>
     <li><strong>Google Play Services:</strong> Required for Android location provider APIs and app integrity.</li>
-    <li><strong>Google AI / Gemini API:</strong> Utilized server-side/securely to generate contextual Islamic knowledge and answers.</li>
+    <li><strong>Google AI / Gemini API:</strong> Used to generate contextual responses. Questions are sent to Google for processing.</li>
   </ul>
 
   <h2>4. Data Sharing and Disclosure</h2>

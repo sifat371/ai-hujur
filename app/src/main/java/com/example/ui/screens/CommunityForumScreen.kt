@@ -576,13 +576,13 @@ private fun ForumReplyItem(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Verified,
+                                    imageVector = Icons.Default.Info,
                                     contentDescription = null,
                                     tint = MidnightBlue,
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Text(
-                                    text = "এআই মডারেটর • শরয়ী সিদ্ধান্ত",
+                                    text = "এআই উত্তর • যাচাই করা হয়নি",
                                     color = MidnightBlue,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold
@@ -629,7 +629,7 @@ private fun ForumReplyItem(
                 lineHeight = 18.sp
             )
 
-            if (reply.verifiedReference != null) {
+            if (!isAi && reply.verifiedReference != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
