@@ -144,7 +144,7 @@ object IslamicRepository {
     val initialForumPosts = listOf(
         ForumPost(
             id = "p1",
-            authorName = "ভাই তারিকুল ইসলাম (ঢাকা)",
+            authorName = "ডেমো প্রশ্নকারী",
             timeAgo = "২৫ মিনিট আগে",
             category = "রমজান ও রোজা",
             questionText = "ভুলবশত বা অন্যমনস্ক হয়ে রোজার মধ্যে কিছু খেয়ে ফেললে বা পানি পান করলে কি রোজা ভেঙে যাবে?",

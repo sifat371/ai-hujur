@@ -111,7 +111,7 @@ fun CommunityForumScreen(
                             color = EmeraldContainer
                         ) {
                             Text(
-                                text = "দ্বীনি আলোচনা",
+                                text = "লোকাল ডেমো",
                                 color = EmeraldSuccess,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
@@ -120,7 +120,7 @@ fun CommunityForumScreen(
                         }
                     }
                     Text(
-                        text = "মুফতি ও স্কলার দ্বারা পর্যবেক্ষিত ইসলামিক প্রশ্নোত্তর ও আলোচনা",
+                        text = "ডেমো: পোস্টগুলো শুধু এই অ্যাপে দেখা যায়; অনলাইনে শেয়ার হয় না",
                         color = TextMuted,
                         fontSize = 11.5.sp
                     )
