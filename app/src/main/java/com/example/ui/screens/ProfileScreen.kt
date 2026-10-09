@@ -40,6 +40,8 @@ fun ProfileScreen(
     val spiritualGoal by viewModel.spiritualGoal.collectAsState()
     val prayerNotifications by viewModel.prayerNotificationsEnabled.collectAsState()
     val calculationMethod by viewModel.calculationMethod.collectAsState()
+    val recentAmalHistory by viewModel.recentAmalHistory.collectAsState()
+    val totalQuranPages by viewModel.totalQuranPages.collectAsState()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showPrivacyPolicyDialog by remember { mutableStateOf(false) }
@@ -79,7 +81,11 @@ fun ProfileScreen(
             )
 
             // Spiritual Stats / Streak Card
-            SpiritualStatsCard()
+            SpiritualStatsCard(
+                fastedDays = recentAmalHistory.count { it.fastingDone },
+                completedPrayers = recentAmalHistory.sumOf { it.prayerCompletionCount() },
+                quranPages = totalQuranPages
+            )
 
             // Notification & Reminder Toggles Section
             TogglesSettingsCard(
@@ -176,7 +182,7 @@ private fun UserProfileCard(
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "আল-হুজুর সদস্য • ১৪৪৭ হিজরি",
+                        text = "লোকাল প্রোফাইল • সাইন-ইন নেই",
                         color = TextMuted,
                         fontSize = 11.sp
                     )
@@ -198,7 +204,11 @@ private fun UserProfileCard(
 }
 
 @Composable
-private fun SpiritualStatsCard() {
+private fun SpiritualStatsCard(
+    fastedDays: Int,
+    completedPrayers: Int,
+    quranPages: Int
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -212,9 +222,9 @@ private fun SpiritualStatsCard() {
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            StatItem(value = "১৪ দিন", label = "রোজার ধারাবাহিকতা", icon = Icons.Default.LocalFireDepartment, tint = BrightGold)
-            StatItem(value = "৭০ / ৭০", label = "ওয়াক্ত নামাজ", icon = Icons.Default.CheckCircle, tint = EmeraldSuccess)
-            StatItem(value = "১৫ পারা", label = "কুরআন পাঠ", icon = Icons.AutoMirrored.Filled.MenuBook, tint = CoralAccent)
+            StatItem(value = "$fastedDays দিন", label = "রোজার লগ (সাম্প্রতিক)", icon = Icons.Default.LocalFireDepartment, tint = BrightGold)
+            StatItem(value = "$completedPrayers", label = "নামাজ লগ (সাম্প্রতিক)", icon = Icons.Default.CheckCircle, tint = EmeraldSuccess)
+            StatItem(value = "$quranPages পৃষ্ঠা", label = "মোট কুরআন লগ", icon = Icons.AutoMirrored.Filled.MenuBook, tint = CoralAccent)
         }
     }
 }
