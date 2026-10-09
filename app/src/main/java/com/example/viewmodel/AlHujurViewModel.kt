@@ -21,8 +21,10 @@ import com.example.data.repository.IslamicRepository
 import com.example.data.service.LocationService
 import com.example.data.service.UserLocationInfo
 import com.example.data.service.PrayerTimeCalculatorService
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class AlHujurViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- ROOM DATABASE REPOSITORY ---
@@ -125,8 +128,11 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     private val _selectedForumCategory = MutableStateFlow("সবগুলো")
     val selectedForumCategory: StateFlow<String> = _selectedForumCategory.asStateFlow()
 
+    // A date flow lets Room queries follow the local day without restarting the app.
+    private val _localToday = MutableStateFlow(amalRepository.getTodayDate())
+
     // --- AMAL TRACKER STATE (POWERED BY ROOM DATABASE) ---
-    val todayAmalRecord: StateFlow<DailyAmalEntity> = amalRepository.getTodayAmal()
+    val todayAmalRecord: StateFlow<DailyAmalEntity> = amalRepository.observeDailyAmal(_localToday)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -140,7 +146,7 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
             initialValue = emptyList()
         )
 
-    val todayDhikrTotal: StateFlow<Int> = amalRepository.getTodayDhikrTotal()
+    val todayDhikrTotal: StateFlow<Int> = _localToday.flatMapLatest { amalRepository.getTodayDhikrTotal(it) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -154,14 +160,14 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
             initialValue = 0
         )
 
-    val recentDhikrLogs: StateFlow<List<DhikrLogEntity>> = amalRepository.getDhikrLogsForDate()
+    val recentDhikrLogs: StateFlow<List<DhikrLogEntity>> = _localToday.flatMapLatest { amalRepository.getDhikrLogsForDate(it) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
-    val recentQuranLogs: StateFlow<List<QuranLogEntity>> = amalRepository.getQuranLogsForDate()
+    val recentQuranLogs: StateFlow<List<QuranLogEntity>> = _localToday.flatMapLatest { amalRepository.getQuranLogsForDate(it) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -175,7 +181,7 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
             initialValue = 0
         )
 
-    val recentSalahLogs: StateFlow<List<SalahLogEntity>> = amalRepository.getSalahLogsForDate()
+    val recentSalahLogs: StateFlow<List<SalahLogEntity>> = _localToday.flatMapLatest { amalRepository.getSalahLogsForDate(it) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -255,7 +261,7 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
 
     private fun observeRoomAmalData() {
         viewModelScope.launch {
-            amalRepository.getTodayAmal().collect { entity ->
+            todayAmalRecord.collect { entity ->
                 _amalProgress.value = AmalDailyProgress(
                     fajrDone = entity.fajrDone,
                     dhuhrDone = entity.dhuhrDone,
@@ -282,6 +288,12 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
         countdownJob?.cancel()
         countdownJob = viewModelScope.launch {
             while (true) {
+                val currentDay = amalRepository.getTodayDate()
+                if (_localToday.value != currentDay) {
+                    _localToday.value = currentDay
+                    // Refresh the date displayed by the Hijri calendar as well.
+                    refreshHijriData()
+                }
                 val loc = _currentLocation.value
                 val (title, subtitle, diffSec) = IslamicRepository.getNextPrayerCountdown(
                     latitude = loc.latitude,

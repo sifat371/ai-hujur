@@ -5,7 +5,9 @@ import com.example.data.local.entity.DailyAmalEntity
 import com.example.data.local.entity.DhikrLogEntity
 import com.example.data.local.entity.QuranLogEntity
 import com.example.data.local.entity.SalahLogEntity
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -35,6 +37,13 @@ class AmalRepository(private val amalDao: AmalDao) {
             record ?: DailyAmalEntity(date = today)
         }
     }
+
+    /** Switch the underlying Room query whenever the local calendar date changes. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun observeDailyAmal(dateFlow: Flow<String>): Flow<DailyAmalEntity> =
+        dateFlow.flatMapLatest { date ->
+            amalDao.getDailyAmal(date).map { it ?: DailyAmalEntity(date = date) }
+        }
 
     fun getAmalForDate(date: String): Flow<DailyAmalEntity?> {
         return amalDao.getDailyAmal(date)

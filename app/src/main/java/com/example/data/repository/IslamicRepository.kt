@@ -92,9 +92,9 @@ object IslamicRepository {
     fun getNextPrayerCountdown(
         latitude: Double = 23.8103,
         longitude: Double = 90.4125,
-        locationName: String = "ঢাকা (বাংলাদেশ)"
+        locationName: String = "ঢাকা (বাংলাদেশ)",
+        calendar: Calendar = Calendar.getInstance()
     ): Triple<String, String, Long> {
-        val calendar = Calendar.getInstance()
         val currentSeconds = calendar.get(Calendar.HOUR_OF_DAY) * 3600 +
                 calendar.get(Calendar.MINUTE) * 60 +
                 calendar.get(Calendar.SECOND)
@@ -111,6 +111,15 @@ object IslamicRepository {
         val asrSec = calculated.asrMinutes * 60
         val maghribSec = calculated.maghribMinutes * 60
         val ishaSec = calculated.ishaMinutes * 60
+        val tomorrowCalendar = (calendar.clone() as Calendar).apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+        }
+        val tomorrowFajr = com.example.data.service.PrayerTimeCalculatorService.calculatePrayerTimes(
+            latitude = latitude,
+            longitude = longitude,
+            calendar = tomorrowCalendar,
+            locationName = locationName
+        ).fajrMinutes
 
         return when {
             currentSeconds < fajrSec -> {
@@ -135,7 +144,7 @@ object IslamicRepository {
             }
             else -> {
                 val secondsUntilMidnight = 86400 - currentSeconds
-                val diff = (secondsUntilMidnight + fajrSec).toLong()
+                val diff = (secondsUntilMidnight + tomorrowFajr * 60).toLong()
                 Triple("ফজর (সেহরি শেষ)", "আগামীকালের রোজা শুরু", diff)
             }
         }
