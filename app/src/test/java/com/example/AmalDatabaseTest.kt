@@ -11,6 +11,10 @@ import com.example.data.local.entity.QuranLogEntity
 import com.example.data.local.entity.SalahLogEntity
 import com.example.data.repository.AmalRepository
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -141,5 +145,24 @@ class AmalDatabaseTest {
         assertEquals(1, salahLogs.size)
         assertTrue(salahLogs[0].prayedInJamat)
         assertTrue(salahLogs[0].isPrayed)
+    }
+
+    @Test
+    fun testDateFlowSwitchesRoomSubscriptionAtMidnight() = runBlocking {
+        val firstDay = "2026-10-09"
+        val nextDay = "2026-10-10"
+        repository.saveDailyAmal(DailyAmalEntity(date = firstDay, fajrDone = true))
+        val day = MutableStateFlow(firstDay)
+        val observed = mutableListOf<DailyAmalEntity>()
+        withTimeout(3000) {
+            repository.observeDailyAmal(day).take(2).collect { record ->
+                observed.add(record)
+                if (record.date == firstDay) day.value = nextDay
+            }
+        }
+        assertEquals(listOf(firstDay, nextDay), observed.map { it.date })
+        assertTrue(observed[0].fajrDone)
+        assertEquals(0, observed[1].prayerCompletionCount())
+        assertTrue(repository.getAmalForDate(firstDay).first()!!.fajrDone)
     }
 }
