@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.example.data.local.entity.DailyAmalEntity
 import com.example.data.local.entity.DhikrLogEntity
 import com.example.data.local.entity.QuranLogEntity
@@ -42,8 +43,14 @@ interface AmalDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSalahLog(log: SalahLogEntity)
 
-    @Query("DELETE FROM salah_logs WHERE date = :date AND prayerName = :prayerName")
+    @Query("DELETE FROM salah_logs WHERE date = :date AND prayerName = :prayerName COLLATE NOCASE")
     suspend fun deleteSalahLog(date: String, prayerName: String)
+
+    @Transaction
+    suspend fun replaceSalahLog(log: SalahLogEntity) {
+        deleteSalahLog(log.date, log.prayerName)
+        insertSalahLog(log)
+    }
 
     @Query("SELECT COUNT(*) FROM salah_logs WHERE date = :date AND isPrayed = 1")
     fun getPrayedCountForDate(date: String): Flow<Int>
@@ -65,8 +72,22 @@ interface AmalDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertQuranLog(log: QuranLogEntity)
 
+    @Query("SELECT * FROM quran_logs WHERE id = :id LIMIT 1")
+    suspend fun getQuranLog(id: Long): QuranLogEntity?
+
     @Query("DELETE FROM quran_logs WHERE id = :id")
     suspend fun deleteQuranLog(id: Long)
+
+    @Transaction
+    suspend fun deleteQuranLogAndUpdateTotal(id: Long) {
+        val log = getQuranLog(id) ?: return
+        deleteQuranLog(id)
+        val daily = getDailyAmalSync(log.date) ?: return
+        insertOrUpdateDailyAmal(daily.copy(
+            quranPagesReadToday = (daily.quranPagesReadToday - log.pagesRead).coerceAtLeast(0),
+            updatedAt = System.currentTimeMillis()
+        ))
+    }
 
     // --- DHIKR LOGS ---
 
@@ -85,6 +106,20 @@ interface AmalDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDhikrLog(log: DhikrLogEntity)
 
+    @Query("SELECT * FROM dhikr_logs WHERE id = :id LIMIT 1")
+    suspend fun getDhikrLog(id: Long): DhikrLogEntity?
+
     @Query("DELETE FROM dhikr_logs WHERE id = :id")
     suspend fun deleteDhikrLog(id: Long)
+
+    @Transaction
+    suspend fun deleteDhikrLogAndUpdateTotal(id: Long) {
+        val log = getDhikrLog(id) ?: return
+        deleteDhikrLog(id)
+        val daily = getDailyAmalSync(log.date) ?: return
+        insertOrUpdateDailyAmal(daily.copy(
+            dhikrTotalCount = (daily.dhikrTotalCount - log.count).coerceAtLeast(0),
+            updatedAt = System.currentTimeMillis()
+        ))
+    }
 }

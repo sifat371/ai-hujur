@@ -98,7 +98,7 @@ class AmalRepository(private val amalDao: AmalDao) {
                 else -> false
             }
             if (isNowDone) {
-                amalDao.insertSalahLog(
+                amalDao.replaceSalahLog(
                     SalahLogEntity(
                         date = date,
                         prayerName = prayer.replaceFirstChar { it.uppercase() },
@@ -140,16 +140,16 @@ class AmalRepository(private val amalDao: AmalDao) {
         amalDao.insertOrUpdateDailyAmal(updated.copy(updatedAt = System.currentTimeMillis()))
 
         if (isPrayed) {
-            amalDao.insertSalahLog(
+            amalDao.replaceSalahLog(
                 SalahLogEntity(
                     date = date,
-                    prayerName = prayerName,
+                    prayerName = normalized.replaceFirstChar { it.uppercase() },
                     isPrayed = true,
                     prayedInJamat = prayedInJamat
                 )
             )
         } else {
-            amalDao.deleteSalahLog(date, prayerName)
+            amalDao.deleteSalahLog(date, normalized.replaceFirstChar { it.uppercase() })
         }
     }
 
@@ -244,7 +244,7 @@ class AmalRepository(private val amalDao: AmalDao) {
     }
 
     suspend fun deleteQuranLog(id: Long) {
-        amalDao.deleteQuranLog(id)
+        amalDao.deleteQuranLogAndUpdateTotal(id)
     }
 
     // --- DHIKR & TASBEEH OPERATIONS ---
@@ -302,6 +302,6 @@ class AmalRepository(private val amalDao: AmalDao) {
     }
 
     suspend fun deleteDhikrLog(id: Long) {
-        amalDao.deleteDhikrLog(id)
+        amalDao.deleteDhikrLogAndUpdateTotal(id)
     }
 }

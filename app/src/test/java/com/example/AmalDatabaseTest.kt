@@ -148,6 +148,36 @@ class AmalDatabaseTest {
     }
 
     @Test
+    fun testRepeatedSalahDetailDoesNotCreateDuplicateLogs() = runBlocking {
+        val date = "2026-10-09"
+        repository.recordSalahDetail("Fajr", true, false, date)
+        repository.recordSalahDetail("fajr", true, true, date)
+        val logs = repository.getSalahLogsForDate(date).first()
+        assertEquals(1, logs.size)
+        assertTrue(logs.single().prayedInJamat)
+        repository.recordSalahDetail("FAJR", false, false, date)
+        assertTrue(repository.getSalahLogsForDate(date).first().isEmpty())
+    }
+
+    @Test
+    fun testDeletingLogsReconcilesDailyTotals() = runBlocking {
+        val date = "2026-10-09"
+        repository.logQuranSession("সূরা আল-ফাতিহা", 1, 5, date = date)
+        repository.recordDhikrSession("সুবহানাল্লাহ", "", 33, date = date)
+        val quranLog = repository.getQuranLogsForDate(date).first().single()
+        val dhikrLog = repository.getDhikrLogsForDate(date).first().single()
+
+        repository.deleteQuranLog(quranLog.id)
+        repository.deleteDhikrLog(dhikrLog.id)
+
+        val daily = repository.getAmalForDate(date).first()!!
+        assertEquals(0, daily.quranPagesReadToday)
+        assertEquals(0, daily.dhikrTotalCount)
+        assertEquals(0, repository.getTodayPagesReadTotal(date).first())
+        assertEquals(0, repository.getTodayDhikrTotal(date).first())
+    }
+
+    @Test
     fun testDateFlowSwitchesRoomSubscriptionAtMidnight() = runBlocking {
         val firstDay = "2026-10-09"
         val nextDay = "2026-10-10"
