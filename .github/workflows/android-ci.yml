@@ -16,7 +16,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      # GitHub Ubuntu runners already provide Android command-line tools.
       - name: Install Android SDK
         run: |
           yes | sdkmanager --licenses >/dev/null || true
