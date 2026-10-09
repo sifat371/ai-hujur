@@ -40,9 +40,9 @@ object IslamicRepository {
     fun getTodayPrayerTimes(
         latitude: Double = 23.8103,
         longitude: Double = 90.4125,
-        locationName: String = "ঢাকা (বাংলাদেশ)"
+        locationName: String = "ঢাকা (বাংলাদেশ)",
+        calendar: Calendar = Calendar.getInstance()
     ): List<PrayerTimeInfo> {
-        val calendar = Calendar.getInstance()
         val currentMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
 
         val calculated = com.example.data.service.PrayerTimeCalculatorService.calculatePrayerTimes(
@@ -82,8 +82,25 @@ object IslamicRepository {
         }
 
         if (!foundNext && result.isNotEmpty()) {
+            // Today's Fajr has already passed. Show tomorrow's time, not a past
+            // prayer marked as both completed and 'next'.
+            val tomorrow = (calendar.clone() as Calendar).apply {
+                add(Calendar.DAY_OF_YEAR, 1)
+            }
+            val nextDay = com.example.data.service.PrayerTimeCalculatorService.calculatePrayerTimes(
+                latitude = latitude,
+                longitude = longitude,
+                calendar = tomorrow,
+                locationName = locationName
+            )
             val fajr = result[0]
-            result[0] = fajr.copy(isNext = true)
+            result[0] = fajr.copy(
+                name = "ফজর (আগামীকাল)",
+                timeString = nextDay.formatTime(nextDay.fajrMinutes),
+                timeMinutes = nextDay.fajrMinutes,
+                isNext = true,
+                isPassed = false
+            )
         }
 
         return result

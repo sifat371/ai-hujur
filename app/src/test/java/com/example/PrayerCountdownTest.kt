@@ -34,6 +34,22 @@ class PrayerCountdownTest {
     }
 
     @Test
+    fun afterIshaNextPrayerIsTomorrowAndNotMarkedPassed() {
+        val atNight = localCalendar(2026, 10, 9, 23)
+        val tomorrow = (atNight.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, 1) }
+        val expectedMinutes = PrayerTimeCalculatorService.calculatePrayerTimes(
+            24.3745, 88.6042, tomorrow
+        ).fajrMinutes
+        val display = IslamicRepository.getTodayPrayerTimes(
+            24.3745, 88.6042, "রাজশাহী", atNight
+        )
+        val next = display.single { it.isNext }
+        assertTrue(next.name.contains("আগামীকাল"))
+        assertTrue(!next.isPassed)
+        assertEquals(expectedMinutes, next.timeMinutes)
+    }
+
+    @Test
     fun calculatedBangladeshTimesStayInExpectedOrder() {
         for ((lat, lon) in listOf(23.8103 to 90.4125, 24.3745 to 88.6042)) {
             for (month in listOf(1, 7)) {
