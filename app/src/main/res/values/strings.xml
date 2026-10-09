@@ -1,0 +1,31 @@
+<resources>
+    <string name="app_name">Al-Hujur AI</string>
+    <string name="app_title">Al-Hujur AI</string>
+    <string name="app_subtitle">Holy Ramadan 1447 Hijri</string>
+    <string name="bangladesh_standard_time">Bangladesh Standard Time</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_ask_ai">Hujur AI</string>
+    <string name="nav_forum">Community</string>
+    <string name="nav_amal">Amal Tracker</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- Home Actions -->
+    <string name="action_ask_ai">Ask Hujur</string>
+    <string name="action_ask_ai_sub">Islamic Guidance &amp; AI Fatwa</string>
+    <string name="action_ramadan_calendar">Ramadan Calendar</string>
+    <string name="action_ramadan_calendar_sub">Sehri &amp; Iftar Times</string>
+    <string name="action_prayer_times">Prayer Times</string>
+    <string name="action_prayer_times_sub">Accurate 5 Daily Prayers</string>
+    <string name="action_library">Islamic Library</string>
+    <string name="action_library_sub">Quran, Hadith &amp; Dua Treasury</string>
+
+    <!-- Quick Tools -->
+    <string name="tool_tasbeeh">Digital Tasbeeh</string>
+    <string name="tool_tasbeeh_sub">Dhikr Counter</string>
+    <string name="tool_dua">Daily Duas</string>
+    <string name="tool_dua_sub">Masnoon Supplications</string>
+    <string name="tool_qibla">Qibla Compass</string>
+    <string name="tool_qibla_sub">Accurate Kaaba Direction</string>
+</resources>

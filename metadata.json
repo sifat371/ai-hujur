@@ -1,0 +1,7 @@
+{
+  "name": "Al-Hujur AI",
+  "description": "Smart Islamic companion in Bengali featuring Scholar AI guidance, Hijri calendar module with significant Islamic events, prayer times calculator, daily amal tracker, and community forum.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

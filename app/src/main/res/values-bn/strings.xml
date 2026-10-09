@@ -1,0 +1,31 @@
+<resources>
+    <string name="app_name">আল-হুজুর এআই</string>
+    <string name="app_title">আল-হুজুর এআই</string>
+    <string name="app_subtitle">পবিত্র রমজানুল মুবারক ১৪৪৭ হিজরি</string>
+    <string name="bangladesh_standard_time">বাংলাদেশ সময়</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">হোম</string>
+    <string name="nav_ask_ai">হুজুর এআই</string>
+    <string name="nav_forum">কমিউনিটি</string>
+    <string name="nav_amal">আমল ট্র্যাকার</string>
+    <string name="nav_profile">প্রোফাইল</string>
+
+    <!-- Home Actions -->
+    <string name="action_ask_ai">হুজুরকে জিজ্ঞাসা</string>
+    <string name="action_ask_ai_sub">শরয়ী সমাধান ও এআই ফতোয়া</string>
+    <string name="action_ramadan_calendar">রমজানের ক্যালেন্ডার</string>
+    <string name="action_ramadan_calendar_sub">সেহরি ও ইফতারের সময়সূচি</string>
+    <string name="action_prayer_times">নামাজের সময়সূচি</string>
+    <string name="action_prayer_times_sub">৫ ওয়াক্তের সঠিক সময়</string>
+    <string name="action_library">ইসলামিক লাইব্রেরি</string>
+    <string name="action_library_sub">কুরআন, হাদিস ও দোয়া ভান্ডার</string>
+
+    <!-- Quick Tools -->
+    <string name="tool_tasbeeh">ডিজিটাল তাসবিহ</string>
+    <string name="tool_tasbeeh_sub">গণনা ও জিকির</string>
+    <string name="tool_dua">দৈনিক দোয়া</string>
+    <string name="tool_dua_sub">মাসনূন দোয়া সমূহ</string>
+    <string name="tool_qibla">কিবলা কম্পাস</string>
+    <string name="tool_qibla_sub">সঠিক কাবা দিকনির্ণয়</string>
+</resources>
