@@ -982,7 +982,10 @@ fun PrayerTimesDialog(viewModel: AlHujurViewModel, onDismiss: () -> Unit) {
     }
 
     val requestNotificationPermissionAndToggle = {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (prayerNotifications) {
+            // Disabling notifications must never require runtime permission.
+            viewModel.togglePrayerNotifications()
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val hasPermission = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.POST_NOTIFICATIONS

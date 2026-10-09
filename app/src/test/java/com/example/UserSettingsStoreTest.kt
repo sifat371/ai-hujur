@@ -63,7 +63,7 @@ class UserSettingsStoreTest {
     @Test
     fun defaultsAreExplicitAndHijriOffsetIsLimited() {
         val settings = UserSettingsStore(context)
-        assertTrue(settings.prayerNotificationsEnabled)
+        assertFalse(settings.prayerNotificationsEnabled)
         assertEquals("ব্যবহারকারী", settings.userName)
         settings.hijriOffsetDays = 100
         assertEquals(2, UserSettingsStore(context).hijriOffsetDays)

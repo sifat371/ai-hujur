@@ -1,5 +1,12 @@
 package com.example.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -45,6 +52,25 @@ fun ProfileScreen(
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showPrivacyPolicyDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var requestTestNotification by remember { mutableStateOf(false) }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            if (requestTestNotification) viewModel.sendTestPrayerAlert()
+            else if (!viewModel.prayerNotificationsEnabled.value) {
+                viewModel.togglePrayerNotifications()
+            }
+        }
+        requestTestNotification = false
+    }
+    val permissionMissing = {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+    }
 
     Box(
         modifier = modifier
@@ -90,9 +116,26 @@ fun ProfileScreen(
             // Notification & Reminder Toggles Section
             TogglesSettingsCard(
                 prayerNotifications = prayerNotifications,
-                onTogglePrayerNotifications = { viewModel.togglePrayerNotifications() },
-                onSendTestAlert = { viewModel.sendTestPrayerAlert() },
-
+                onTogglePrayerNotifications = {
+                    if (prayerNotifications) {
+                        viewModel.togglePrayerNotifications()
+                    } else if (permissionMissing()) {
+                        requestTestNotification = false
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        viewModel.togglePrayerNotifications()
+                    }
+                },
+                onSendTestAlert = {
+                    if (permissionMissing()) {
+                        requestTestNotification = true
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        false
+                    } else {
+                        viewModel.sendTestPrayerAlert()
+                        true
+                    }
+                }
             )
 
             // Privacy Policy & Security Card
@@ -247,7 +290,7 @@ private fun StatItem(
 private fun TogglesSettingsCard(
     prayerNotifications: Boolean,
     onTogglePrayerNotifications: () -> Unit,
-    onSendTestAlert: () -> Unit
+    onSendTestAlert: () -> Boolean
 ) {
     var testAlertSent by remember { mutableStateOf(false) }
     Card(
@@ -325,8 +368,7 @@ private fun TogglesSettingsCard(
                 ) {
                     OutlinedButton(
                         onClick = {
-                            onSendTestAlert()
-                            testAlertSent = true
+                            testAlertSent = onSendTestAlert()
                         },
                         shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(1.dp, IslamicGold.copy(alpha = 0.7f)),
@@ -351,7 +393,7 @@ private fun TogglesSettingsCard(
 
                     if (testAlertSent) {
                         Text(
-                            text = "✓ টেস্ট নোটিফিকেশন পাঠানো হয়েছে",
+                            text = "টেস্ট নোটিফিকেশন অনুরোধ করা হয়েছে",
                             color = EmeraldSuccess,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium

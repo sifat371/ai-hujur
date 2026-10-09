@@ -10,10 +10,10 @@ class UserSettingsStore(context: Context) {
         "al_hujur_user_settings", Context.MODE_PRIVATE
     )
     var prayerNotificationsEnabled: Boolean
-        get() = prefs.getBoolean("prayer_notifications", true)
+        get() = prefs.getBoolean("prayer_notifications", false)
         set(value) { prefs.edit().putBoolean("prayer_notifications", value).apply() }
     var aiDailyRemindersEnabled: Boolean
-        get() = prefs.getBoolean("ai_reminders", true)
+        get() = prefs.getBoolean("ai_reminders", false)
         set(value) { prefs.edit().putBoolean("ai_reminders", value).apply() }
     var userName: String
         get() = prefs.getString("user_name", "ব্যবহারকারী") ?: "ব্যবহারকারী"
