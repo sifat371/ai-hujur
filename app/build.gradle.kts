@@ -1,13 +1,27 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.util.Properties
 
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
-  alias(libs.plugins.secrets)
   alias(libs.plugins.google.services)
 }
+
+val developerSettings = Properties()
+val developerEnv = rootProject.file(".env")
+if (developerEnv.isFile) developerEnv.inputStream().use(developerSettings::load)
+val localGeminiKey = providers.environmentVariable("GEMINI_API_KEY").orNull
+    ?: developerSettings.getProperty("GEMINI_API_KEY", "MY_GEMINI_API_KEY")
+val keyStorePath = System.getenv("KEYSTORE_PATH")
+val keyStorePassword = System.getenv("STORE_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD")
+val keyPassword = System.getenv("KEY_PASSWORD") ?: keyStorePassword
+val keyAlias = System.getenv("KEY_ALIAS")
+val releaseSigningConfigured = !keyStorePath.isNullOrBlank() &&
+    file(keyStorePath).isFile && !keyStorePassword.isNullOrBlank() &&
+    !keyPassword.isNullOrBlank() && !keyAlias.isNullOrBlank()
+
 
 android {
   namespace = "com.example"
@@ -24,29 +38,13 @@ android {
   }
 
   signingConfigs {
-    create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH")
-      val uploadKey = if (!keystorePath.isNullOrBlank()) file(keystorePath) else file("${rootDir}/my-upload-key.jks")
-      val storePass = System.getenv("STORE_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD")
-      val keyPass = System.getenv("KEY_PASSWORD") ?: storePass
-
-      if (uploadKey.exists() && !storePass.isNullOrBlank()) {
-        storeFile = uploadKey
-        storePassword = storePass
-        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
-        keyPassword = keyPass
-      } else {
-        storeFile = file("${rootDir}/debug.keystore")
-        storePassword = "android"
-        keyAlias = "androiddebugkey"
-        keyPassword = "android"
+    if (releaseSigningConfigured) {
+      create("release") {
+        storeFile = file(keyStorePath!!)
+        storePassword = keyStorePassword!!
+        keyAlias = keyAlias!!
+        keyPassword = keyPassword!!
       }
-    }
-    create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
     }
   }
 
@@ -55,9 +53,14 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("release")
+      // Never fall back to debug signing; an unsigned release cannot be published.
+      signingConfig = if (releaseSigningConfigured) signingConfigs.getByName("release") else null
+      buildConfigField("String", "GEMINI_API_KEY", "\"\"")
     }
-    debug { signingConfig = signingConfigs.getByName("debugConfig") }
+    debug {
+      // Debug-only local key. Production requires a server-side AI gateway.
+      buildConfigField("String", "GEMINI_API_KEY", "\"${localGeminiKey}\"")
+    }
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -76,14 +79,6 @@ android {
     includeInApk = false
     includeInBundle = true
   }
-}
-
-// Configure the Secrets Gradle Plugin to use .env and .env.example files
-// to match the convention used in Web projects.
-secrets {
-  propertiesFileName = ".env"
-  defaultPropertiesFileName = ".env.example"
-  ignoreList.add("FIREBASE_APPCHECK_DEBUG_TOKEN")
 }
 
 googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }

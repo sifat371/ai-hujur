@@ -1,5 +1,12 @@
 package com.example.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -39,11 +46,31 @@ fun ProfileScreen(
     val userName by viewModel.userName.collectAsState()
     val spiritualGoal by viewModel.spiritualGoal.collectAsState()
     val prayerNotifications by viewModel.prayerNotificationsEnabled.collectAsState()
-    val aiDailyReminders by viewModel.aiDailyRemindersEnabled.collectAsState()
     val calculationMethod by viewModel.calculationMethod.collectAsState()
+    val recentAmalHistory by viewModel.recentAmalHistory.collectAsState()
+    val totalQuranPages by viewModel.totalQuranPages.collectAsState()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showPrivacyPolicyDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var requestTestNotification by remember { mutableStateOf(false) }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            if (requestTestNotification) viewModel.sendTestPrayerAlert()
+            else if (!viewModel.prayerNotificationsEnabled.value) {
+                viewModel.togglePrayerNotifications()
+            }
+        }
+        requestTestNotification = false
+    }
+    val permissionMissing = {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+    }
 
     Box(
         modifier = modifier
@@ -80,17 +107,35 @@ fun ProfileScreen(
             )
 
             // Spiritual Stats / Streak Card
-            SpiritualStatsCard()
+            SpiritualStatsCard(
+                fastedDays = recentAmalHistory.count { it.fastingDone },
+                completedPrayers = recentAmalHistory.sumOf { it.prayerCompletionCount() },
+                quranPages = totalQuranPages
+            )
 
             // Notification & Reminder Toggles Section
             TogglesSettingsCard(
                 prayerNotifications = prayerNotifications,
-                onTogglePrayerNotifications = { viewModel.togglePrayerNotifications() },
-                onSendTestAlert = { viewModel.sendTestPrayerAlert() },
-                aiDailyReminders = aiDailyReminders,
-                onToggleAiReminders = { viewModel.toggleAiReminders() },
-                calculationMethod = calculationMethod,
-                onSelectMethod = { viewModel.updateProfile(userName, spiritualGoal, it) }
+                onTogglePrayerNotifications = {
+                    if (prayerNotifications) {
+                        viewModel.togglePrayerNotifications()
+                    } else if (permissionMissing()) {
+                        requestTestNotification = false
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        viewModel.togglePrayerNotifications()
+                    }
+                },
+                onSendTestAlert = {
+                    if (permissionMissing()) {
+                        requestTestNotification = true
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        false
+                    } else {
+                        viewModel.sendTestPrayerAlert()
+                        true
+                    }
+                }
             )
 
             // Privacy Policy & Security Card
@@ -180,7 +225,7 @@ private fun UserProfileCard(
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "আল-হুজুর সদস্য • ১৪৪৭ হিজরি",
+                        text = "লোকাল প্রোফাইল • সাইন-ইন নেই",
                         color = TextMuted,
                         fontSize = 11.sp
                     )
@@ -202,7 +247,11 @@ private fun UserProfileCard(
 }
 
 @Composable
-private fun SpiritualStatsCard() {
+private fun SpiritualStatsCard(
+    fastedDays: Int,
+    completedPrayers: Int,
+    quranPages: Int
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -216,9 +265,9 @@ private fun SpiritualStatsCard() {
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            StatItem(value = "১৪ দিন", label = "রোজার ধারাবাহিকতা", icon = Icons.Default.LocalFireDepartment, tint = BrightGold)
-            StatItem(value = "৭০ / ৭০", label = "ওয়াক্ত নামাজ", icon = Icons.Default.CheckCircle, tint = EmeraldSuccess)
-            StatItem(value = "১৫ পারা", label = "কুরআন পাঠ", icon = Icons.AutoMirrored.Filled.MenuBook, tint = CoralAccent)
+            StatItem(value = "$fastedDays দিন", label = "রোজার লগ (সাম্প্রতিক)", icon = Icons.Default.LocalFireDepartment, tint = BrightGold)
+            StatItem(value = "$completedPrayers", label = "নামাজ লগ (সাম্প্রতিক)", icon = Icons.Default.CheckCircle, tint = EmeraldSuccess)
+            StatItem(value = "$quranPages পৃষ্ঠা", label = "মোট কুরআন লগ", icon = Icons.AutoMirrored.Filled.MenuBook, tint = CoralAccent)
         }
     }
 }
@@ -241,21 +290,9 @@ private fun StatItem(
 private fun TogglesSettingsCard(
     prayerNotifications: Boolean,
     onTogglePrayerNotifications: () -> Unit,
-    onSendTestAlert: () -> Unit,
-    aiDailyReminders: Boolean,
-    onToggleAiReminders: () -> Unit,
-    calculationMethod: String,
-    onSelectMethod: (String) -> Unit
+    onSendTestAlert: () -> Boolean
 ) {
-    var expandedMethodMenu by remember { mutableStateOf(false) }
     var testAlertSent by remember { mutableStateOf(false) }
-    val methods = listOf(
-        "ইসলামিক ফাউন্ডেশন বাংলাদেশ",
-        "মুসলিম ওয়ার্ল্ড লীগ (MWL)",
-        "ইসলামিক সাইন্সেস করাচি (হানাফি)",
-        "উম্মুল কুরা বিশ্ববিদ্যালয়, মক্কা"
-    )
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -331,8 +368,7 @@ private fun TogglesSettingsCard(
                 ) {
                     OutlinedButton(
                         onClick = {
-                            onSendTestAlert()
-                            testAlertSent = true
+                            testAlertSent = onSendTestAlert()
                         },
                         shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(1.dp, IslamicGold.copy(alpha = 0.7f)),
@@ -357,7 +393,7 @@ private fun TogglesSettingsCard(
 
                     if (testAlertSent) {
                         Text(
-                            text = "✓ টেস্ট নোটিফিকেশন পাঠানো হয়েছে",
+                            text = "টেস্ট নোটিফিকেশন অনুরোধ করা হয়েছে",
                             color = EmeraldSuccess,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium
@@ -368,115 +404,18 @@ private fun TogglesSettingsCard(
 
             HorizontalDivider(color = Color(0x22D4AF37))
 
-            // AI Daily Reminders Toggle
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onToggleAiReminders() },
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        tint = BrightGold,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Column {
-                        Text(
-                            text = "দৈনিক নসিহত ও সেহরি রিমাইন্ডার",
-                            color = TextWhite,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "সকালে বিশেষ নসিহত ও সেহরির জন্য জাগানোর অ্যালার্ম",
-                            color = TextMuted,
-                            fontSize = 11.sp
-                        )
-                    }
-                }
-
-                Switch(
-                    checked = aiDailyReminders,
-                    onCheckedChange = { onToggleAiReminders() },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MidnightBlue,
-                        checkedTrackColor = BrightGold,
-                        uncheckedThumbColor = TextMuted,
-                        uncheckedTrackColor = NavySurface
-                    ),
-                    modifier = Modifier.testTag("toggle_ai_daily_reminders")
-                )
-            }
-
-            HorizontalDivider(color = Color(0x22D4AF37))
-
-            // Calculation Method Dropdown Selector
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = "নামাজের সময় গণনার পদ্ধতি",
-                    color = TextLight,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
-                )
-
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = NavySurface,
-                    border = BorderStroke(1.dp, Color(0x33D4AF37)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { expandedMethodMenu = true }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = calculationMethod,
-                            color = BrightGold,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = null,
-                            tint = IslamicGold
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = expandedMethodMenu,
-                        onDismissRequest = { expandedMethodMenu = false },
-                        modifier = Modifier.background(DeepNavy)
-                    ) {
-                        methods.forEach { method ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = method,
-                                        color = if (method == calculationMethod) BrightGold else TextLight,
-                                        fontSize = 13.sp
-                                    )
-                                },
-                                onClick = {
-                                    onSelectMethod(method)
-                                    expandedMethodMenu = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
+            // The application currently only implements 18° twilight angles
+            // with Hanafi Asr. Do not offer fake selection of unsupported methods.
+            Text(
+                text = "বর্তমান গণনা: ফজর ও এশা ১৮°; আসর হানাফি পদ্ধতি",
+                color = TextLight,
+                fontSize = 13.sp
+            )
+            Text(
+                text = "সময়গুলো আনুমানিক। স্থানীয় কর্তৃপক্ষের প্রকাশিত সময় যাচাই করুন।",
+                color = TextMuted,
+                fontSize = 11.sp
+            )
         }
     }
 }
@@ -513,7 +452,7 @@ private fun AboutAppCard(
                 )
             }
             Text(
-                text = "আল-হুজুর এআই হলো বাংলাদেশের মুসলিমদের জন্য আধুনিক ইসলামিক সহকারী অ্যাপ। পবিত্র কুরআন ও সুন্নাহর ভিত্তিতে ইসলামিক প্রশ্নের তাৎক্ষণিক সমাধান, সেহরি-ইফতারের নির্ভুল সময়সূচি, ডিজিটাল তাসবিহ, কিবলা কম্পাস ও আমল ট্র্যাকারসহ পরিপূর্ণ অভিজ্ঞতা প্রদান করে।",
+                text = "আল-হুজুর এআই হলো বাংলাদেশের মুসলিমদের জন্য আধুনিক ইসলামিক সহকারী অ্যাপ। ইসলামিক প্রশ্নে এআই-সহায়ক তথ্য, আনুমানিক নামাজের সময়সূচি, ডিজিটাল তাসবিহ, কিবলা কম্পাস ও আমল ট্র্যাকারসহ পরিপূর্ণ অভিজ্ঞতা প্রদান করে।",
                 color = TextMuted,
                 fontSize = 12.sp,
                 lineHeight = 18.sp

@@ -11,6 +11,10 @@ import com.example.data.local.entity.QuranLogEntity
 import com.example.data.local.entity.SalahLogEntity
 import com.example.data.repository.AmalRepository
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -141,5 +145,54 @@ class AmalDatabaseTest {
         assertEquals(1, salahLogs.size)
         assertTrue(salahLogs[0].prayedInJamat)
         assertTrue(salahLogs[0].isPrayed)
+    }
+
+    @Test
+    fun testRepeatedSalahDetailDoesNotCreateDuplicateLogs() = runBlocking {
+        val date = "2026-10-09"
+        repository.recordSalahDetail("Fajr", true, false, date)
+        repository.recordSalahDetail("fajr", true, true, date)
+        val logs = repository.getSalahLogsForDate(date).first()
+        assertEquals(1, logs.size)
+        assertTrue(logs.single().prayedInJamat)
+        repository.recordSalahDetail("FAJR", false, false, date)
+        assertTrue(repository.getSalahLogsForDate(date).first().isEmpty())
+    }
+
+    @Test
+    fun testDeletingLogsReconcilesDailyTotals() = runBlocking {
+        val date = "2026-10-09"
+        repository.logQuranSession("সূরা আল-ফাতিহা", 1, 5, date = date)
+        repository.recordDhikrSession("সুবহানাল্লাহ", "", 33, date = date)
+        val quranLog = repository.getQuranLogsForDate(date).first().single()
+        val dhikrLog = repository.getDhikrLogsForDate(date).first().single()
+
+        repository.deleteQuranLog(quranLog.id)
+        repository.deleteDhikrLog(dhikrLog.id)
+
+        val daily = repository.getAmalForDate(date).first()!!
+        assertEquals(0, daily.quranPagesReadToday)
+        assertEquals(0, daily.dhikrTotalCount)
+        assertEquals(0, repository.getTodayPagesReadTotal(date).first())
+        assertEquals(0, repository.getTodayDhikrTotal(date).first())
+    }
+
+    @Test
+    fun testDateFlowSwitchesRoomSubscriptionAtMidnight() = runBlocking {
+        val firstDay = "2026-10-09"
+        val nextDay = "2026-10-10"
+        repository.saveDailyAmal(DailyAmalEntity(date = firstDay, fajrDone = true))
+        val day = MutableStateFlow(firstDay)
+        val observed = mutableListOf<DailyAmalEntity>()
+        withTimeout(3000) {
+            repository.observeDailyAmal(day).take(2).collect { record ->
+                observed.add(record)
+                if (record.date == firstDay) day.value = nextDay
+            }
+        }
+        assertEquals(listOf(firstDay, nextDay), observed.map { it.date })
+        assertTrue(observed[0].fajrDone)
+        assertEquals(0, observed[1].prayerCompletionCount())
+        assertTrue(repository.getAmalForDate(firstDay).first()!!.fajrDone)
     }
 }

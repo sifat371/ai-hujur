@@ -687,7 +687,7 @@ private fun MainActionsGrid(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "৩০ দিনের সেহরি, ইফতার ও ফজিলতপূর্ণ আমল",
+                            text = "স্থানীয়ভাবে যাচাইকৃত রমজান সময়সূচির নির্দেশনা",
                             color = TextMuted,
                             fontSize = 11.sp
                         )
@@ -913,133 +913,49 @@ private fun QuickToolPill(
 
 @Composable
 fun RamadanCalendarDialog(onDismiss: () -> Unit) {
-    val ramadanDays = remember { IslamicRepository.getRamadan30Days() }
-
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.85f),
+            modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = DeepNavy),
             border = BorderStroke(1.5.dp, IslamicGold)
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp)
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text(
-                            text = "পবিত্র রমজান ক্যালেন্ডার ১৪৪৭",
-                            color = BrightGold,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "৩০ দিনের সেহরি ও ইফতারের সময়সূচী (ঢাকা ও বাংলাদেশ)",
-                            color = TextMuted,
-                            fontSize = 12.sp
-                        )
-                    }
-                    IconButton(onClick = onDismiss) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = "বন্ধ করুন", tint = TextLight)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Hero Ramadan banner image
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(110.dp),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.img_ramadan_banner),
-                        contentDescription = "রমজান মোবারক",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                    Text(
+                        text = "রমজান সময়সূচি",
+                        color = BrightGold,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
                     )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Timetable Header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(NavySurface, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("রমজান / বার", color = IslamicGold, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.1f))
-                    Text("সেহরি শেষ", color = IslamicGold, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), textAlign = TextAlign.Center)
-                    Text("ইফতার", color = IslamicGold, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.1f), textAlign = TextAlign.End)
-                }
-
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(top = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    items(ramadanDays) { day ->
-                        val isToday = day.isToday
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = if (isToday) NavyCardElevated else NavyCard,
-                            border = if (isToday) BorderStroke(1.dp, BrightGold) else null
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    modifier = Modifier.weight(1.1f),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Text(
-                                        text = day.dateString,
-                                        color = if (isToday) BrightGold else TextWhite,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.5.sp
-                                    )
-                                    Text(
-                                        text = "(${day.dayOfWeek})",
-                                        color = TextMuted,
-                                        fontSize = 11.sp
-                                    )
-                                }
-
-                                Text(
-                                    text = day.sehriTime,
-                                    color = TextLight,
-                                    fontSize = 12.5.sp,
-                                    modifier = Modifier.weight(1.2f),
-                                    textAlign = TextAlign.Center
-                                )
-
-                                Text(
-                                    text = day.iftarTime,
-                                    color = if (isToday) BrightGold else IslamicGold,
-                                    fontSize = 12.5.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.weight(1.1f),
-                                    textAlign = TextAlign.End
-                                )
-                            }
-                        }
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "বন্ধ করুন",
+                            tint = TextLight
+                        )
                     }
                 }
+                Text(
+                    text = "যাচাইকৃত সেহরি ও ইফতারের তালিকা এখনও উপলব্ধ নয়।",
+                    color = TextWhite,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = "আগের সংস্করণে নমুনা গণনা থেকে তৈরি সময় দেখানো হতো, " +
+                        "যা ধর্মীয় সময় নির্ধারণের জন্য নির্ভরযোগ্য নয়। " +
+                        "অনুগ্রহ করে আপনার এলাকার ইসলামিক ফাউন্ডেশন বা মসজিদের " +
+                        "যাচাইকৃত সময়সূচি অনুসরণ করুন।",
+                    color = TextMuted,
+                    fontSize = 13.sp
+                )
             }
         }
     }
@@ -1066,7 +982,10 @@ fun PrayerTimesDialog(viewModel: AlHujurViewModel, onDismiss: () -> Unit) {
     }
 
     val requestNotificationPermissionAndToggle = {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (prayerNotifications) {
+            // Disabling notifications must never require runtime permission.
+            viewModel.togglePrayerNotifications()
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val hasPermission = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.POST_NOTIFICATIONS

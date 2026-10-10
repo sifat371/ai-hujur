@@ -111,7 +111,7 @@ fun CommunityForumScreen(
                             color = EmeraldContainer
                         ) {
                             Text(
-                                text = "দ্বীনি আলোচনা",
+                                text = "লোকাল ডেমো",
                                 color = EmeraldSuccess,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
@@ -120,7 +120,7 @@ fun CommunityForumScreen(
                         }
                     }
                     Text(
-                        text = "মুফতি ও স্কলার দ্বারা পর্যবেক্ষিত ইসলামিক প্রশ্নোত্তর ও আলোচনা",
+                        text = "ডেমো: পোস্টগুলো শুধু এই অ্যাপে দেখা যায়; অনলাইনে শেয়ার হয় না",
                         color = TextMuted,
                         fontSize = 11.5.sp
                     )
@@ -576,13 +576,13 @@ private fun ForumReplyItem(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Verified,
+                                    imageVector = Icons.Default.Info,
                                     contentDescription = null,
                                     tint = MidnightBlue,
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Text(
-                                    text = "এআই মডারেটর • শরয়ী সিদ্ধান্ত",
+                                    text = "এআই উত্তর • যাচাই করা হয়নি",
                                     color = MidnightBlue,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold
@@ -629,7 +629,7 @@ private fun ForumReplyItem(
                 lineHeight = 18.sp
             )
 
-            if (reply.verifiedReference != null) {
+            if (!isAi && reply.verifiedReference != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)

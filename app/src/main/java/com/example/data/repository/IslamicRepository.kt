@@ -40,9 +40,9 @@ object IslamicRepository {
     fun getTodayPrayerTimes(
         latitude: Double = 23.8103,
         longitude: Double = 90.4125,
-        locationName: String = "ঢাকা (বাংলাদেশ)"
+        locationName: String = "ঢাকা (বাংলাদেশ)",
+        calendar: Calendar = Calendar.getInstance()
     ): List<PrayerTimeInfo> {
-        val calendar = Calendar.getInstance()
         val currentMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
 
         val calculated = com.example.data.service.PrayerTimeCalculatorService.calculatePrayerTimes(
@@ -82,8 +82,25 @@ object IslamicRepository {
         }
 
         if (!foundNext && result.isNotEmpty()) {
+            // Today's Fajr has already passed. Show tomorrow's time, not a past
+            // prayer marked as both completed and 'next'.
+            val tomorrow = (calendar.clone() as Calendar).apply {
+                add(Calendar.DAY_OF_YEAR, 1)
+            }
+            val nextDay = com.example.data.service.PrayerTimeCalculatorService.calculatePrayerTimes(
+                latitude = latitude,
+                longitude = longitude,
+                calendar = tomorrow,
+                locationName = locationName
+            )
             val fajr = result[0]
-            result[0] = fajr.copy(isNext = true)
+            result[0] = fajr.copy(
+                name = "ফজর (আগামীকাল)",
+                timeString = nextDay.formatTime(nextDay.fajrMinutes),
+                timeMinutes = nextDay.fajrMinutes,
+                isNext = true,
+                isPassed = false
+            )
         }
 
         return result
@@ -92,9 +109,9 @@ object IslamicRepository {
     fun getNextPrayerCountdown(
         latitude: Double = 23.8103,
         longitude: Double = 90.4125,
-        locationName: String = "ঢাকা (বাংলাদেশ)"
+        locationName: String = "ঢাকা (বাংলাদেশ)",
+        calendar: Calendar = Calendar.getInstance()
     ): Triple<String, String, Long> {
-        val calendar = Calendar.getInstance()
         val currentSeconds = calendar.get(Calendar.HOUR_OF_DAY) * 3600 +
                 calendar.get(Calendar.MINUTE) * 60 +
                 calendar.get(Calendar.SECOND)
@@ -111,6 +128,15 @@ object IslamicRepository {
         val asrSec = calculated.asrMinutes * 60
         val maghribSec = calculated.maghribMinutes * 60
         val ishaSec = calculated.ishaMinutes * 60
+        val tomorrowCalendar = (calendar.clone() as Calendar).apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+        }
+        val tomorrowFajr = com.example.data.service.PrayerTimeCalculatorService.calculatePrayerTimes(
+            latitude = latitude,
+            longitude = longitude,
+            calendar = tomorrowCalendar,
+            locationName = locationName
+        ).fajrMinutes
 
         return when {
             currentSeconds < fajrSec -> {
@@ -135,7 +161,7 @@ object IslamicRepository {
             }
             else -> {
                 val secondsUntilMidnight = 86400 - currentSeconds
-                val diff = (secondsUntilMidnight + fajrSec).toLong()
+                val diff = (secondsUntilMidnight + tomorrowFajr * 60).toLong()
                 Triple("ফজর (সেহরি শেষ)", "আগামীকালের রোজা শুরু", diff)
             }
         }
@@ -144,7 +170,7 @@ object IslamicRepository {
     val initialForumPosts = listOf(
         ForumPost(
             id = "p1",
-            authorName = "ভাই তারিকুল ইসলাম (ঢাকা)",
+            authorName = "ডেমো প্রশ্নকারী",
             timeAgo = "২৫ মিনিট আগে",
             category = "রমজান ও রোজা",
             questionText = "ভুলবশত বা অন্যমনস্ক হয়ে রোজার মধ্যে কিছু খেয়ে ফেললে বা পানি পান করলে কি রোজা ভেঙে যাবে?",
@@ -153,7 +179,7 @@ object IslamicRepository {
             replies = listOf(
                 ForumReply(
                     id = "r1_ai",
-                    authorName = "এআই মডারেটর (মুফতি)",
+                    authorName = "ডেমো এআই উত্তর (যাচাই করা নয়)",
                     replyText = "শরয়ী সমাধান: ভুলবশত পানাহার করলে রোজা নষ্ট হয় না, রোজা সম্পূর্ণ সহীহ থাকবে। রাসূলুল্লাহ ﷺ বলেছেন: 'যে ব্যক্তি রোজা থাকা অবস্থায় ভুলে গিয়ে পানাহার করল, সে যেন তার রোজা পূর্ণ করে। কারণ আল্লাহই তাকে খাইয়েছেন এবং পান করিয়েছেন।' (সহীহ বুখারী ১৯৩৩, মুসলিম ১১৫৫)। এর জন্য কোনো কাজা বা কাফফারা ওয়াজিব হয় না।",
                     timeAgo = "২০ মিনিট আগে",
                     isAiModerator = true,
@@ -161,7 +187,7 @@ object IslamicRepository {
                 ),
                 ForumReply(
                     id = "r1_u1",
-                    authorName = "আমিনা খাতুন",
+                    authorName = "ডেমো ব্যবহারকারী",
                     replyText = "সুবহানাল্লাহ! আল্লাহর রহমত কত অপরিসীম। কাল ইফতারের প্রস্তুতি নেওয়ার সময় আমার মায়ের এমন হয়েছিল, এই মাসয়ালায় অনেক প্রশান্তি পেলাম।",
                     timeAgo = "১২ মিনিট আগে",
                     isAiModerator = false
@@ -170,7 +196,7 @@ object IslamicRepository {
         ),
         ForumPost(
             id = "p2",
-            authorName = "মারিয়াম বেগম (চট্টগ্রাম)",
+            authorName = "ডেমো প্রশ্নকারী",
             timeAgo = "১ ঘণ্টা আগে",
             category = "ফিকহ ও নামাজ",
             questionText = "ছোট বাচ্চা বা কাজের কারণে মসজিদে যেতে না পারলে ঘরে একাকী বা পরিবারের সাথে তারাবীহর নামাজ পড়া যাবে কি?",
@@ -179,7 +205,7 @@ object IslamicRepository {
             replies = listOf(
                 ForumReply(
                     id = "r2_ai",
-                    authorName = "এআই মডারেটর (মুফতি)",
+                    authorName = "ডেমো এআই উত্তর (যাচাই করা নয়)",
                     replyText = "শরয়ী সমাধান: হ্যাঁ, ঘরে একাকী বা পরিবারের সদস্যদের সাথে তারাবীহর নামাজ সম্পূর্ণ আদায় করা জায়েজ। মা-বোনদের জন্য ঘরে তারাবীহ ও নামাজ আদায় করা অধিক সওয়াবের। পুরুষরাও ওজরের কারণে ঘরে একাকী বা জামাত করে ২০ রাকাত বা ৮ রাকাত আদায় করতে পারবেন।",
                     timeAgo = "৫০ মিনিট আগে",
                     isAiModerator = true,
@@ -189,7 +215,7 @@ object IslamicRepository {
         ),
         ForumPost(
             id = "p3",
-            authorName = "জায়েদ হাসান (সিলেট)",
+            authorName = "ডেমো প্রশ্নকারী",
             timeAgo = "৩ ঘণ্টা আগে",
             category = "দৈনিক জিকির ও দোয়া",
             questionText = "শবে কদর ও রমজানের শেষ দশকে বেশি বেশি পড়ার জন্য সবচেয়ে উত্তম দোয়া কোনটি?",
@@ -198,7 +224,7 @@ object IslamicRepository {
             replies = listOf(
                 ForumReply(
                     id = "r3_ai",
-                    authorName = "এআই মডারেটর (মুফতি)",
+                    authorName = "ডেমো এআই উত্তর (যাচাই করা নয়)",
                     replyText = "হযরত আয়েশা (রা.) রাসূলুল্লাহ ﷺ-কে জিজ্ঞাসা করেছিলেন: 'হে আল্লাহর রাসূল! আমি যদি লাইলাতুল কদর পাই, তবে কী দোয়া করব?' তিনি ﷺ বললেন: 'তুমি বলবে— اللَّهُمَّ إِنَّكَ عَفُوٌّ تُحِبُّ الْعَفْوَ فَاعْفُ عَنِّي (আল্লাহুম্মা ইন্নাকা আফুউন, তুহিব্বুল আফওয়া, ফা'ফু আন্নী)। অর্থ: হে আল্লাহ! আপনি নিশ্চয়ই ক্ষমাশীল, ক্ষমা করা পছন্দ করেন; অতএব আমাকে ক্ষমা করে দিন।'",
                     timeAgo = "২ ঘণ্টা আগে",
                     isAiModerator = true,
@@ -239,50 +265,7 @@ object IslamicRepository {
         )
     )
 
-    fun getRamadan30Days(): List<RamadanCalendarDay> {
-        val days = mutableListOf<RamadanCalendarDay>()
-        val dayNames = listOf("সোম", "মঙ্গল", "বুধ", "বৃহস্পতি", "শুক্র", "শনি", "রবি")
-
-        for (i in 1..30) {
-            val dayOfWeek = dayNames[(i + 2) % 7]
-            val sehriMins = 4 * 60 + 55 - (i * 1) // gradual progression in Dhaka
-            val iftarMins = 18 * 60 + 12 + (i * 1)
-
-            val sH = sehriMins / 60
-            val sM = sehriMins % 60
-            val iH = (iftarMins / 60) - 12
-            val iM = iftarMins % 60
-
-            val sehriStr = String.format(Locale.US, "%02d:%02d পূর্বাহ্ন", sH, sM)
-            val iftarStr = String.format(Locale.US, "%02d:%02d অপরাহ্ন", iH, iM)
-
-            days.add(
-                RamadanCalendarDay(
-                    dayNumber = i,
-                    dateString = "${toBengaliNumber(i)} রমজান",
-                    dayOfWeek = dayOfWeek,
-                    sehriTime = sehriStr,
-                    iftarTime = iftarStr,
-                    isToday = (i == 14)
-                )
-            )
-        }
-        return days
-    }
-
-    private fun toBengaliNumber(number: Int): String {
-        val bengaliDigits = arrayOf('০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯')
-        val str = number.toString()
-        val builder = StringBuilder()
-        for (ch in str) {
-            if (ch in '0'..'9') {
-                builder.append(bengaliDigits[ch - '0'])
-            } else {
-                builder.append(ch)
-            }
-        }
-        return builder.toString()
-    }
+    // Verified Ramadan timetables must come from a validated regional source.
 
     val libraryItems = listOf(
         LibraryItem(

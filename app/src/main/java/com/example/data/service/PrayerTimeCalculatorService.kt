@@ -8,8 +8,8 @@ import kotlin.math.*
 
 /**
  * Astronomical Prayer Times Calculator Service
- * Computes exact daily Islamic prayer times (Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha)
- * based on geographical coordinates (latitude & longitude), elevation, and date.
+ * Estimates daily Islamic prayer times (Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha)
+ * based on coordinates and date. These are estimates and not verified official schedules.
  * Implements standard conventions (including Karachi/Islamic Foundation 18° twilight angles and Hanafi/Shafi'i Asr).
  */
 object PrayerTimeCalculatorService {
