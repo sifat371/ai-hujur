@@ -31,8 +31,8 @@ android {
     applicationId = "com.aistudio.alhujurai.mkhzqp"
     minSdk = 24
     targetSdk = 36
-    versionCode = 2
-    versionName = "2.0"
+    versionCode = 9
+    versionName = "9.0-qa"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -58,6 +58,9 @@ android {
       buildConfigField("String", "GEMINI_API_KEY", "\"\"")
     }
     debug {
+      // Keep this v2-first build separate from both the Play app and old v9 QA.
+      applicationIdSuffix = ".v2qa"
+      versionNameSuffix = "-debug"
       // Debug-only local key. Production requires a server-side AI gateway.
       buildConfigField("String", "GEMINI_API_KEY", "\"${localGeminiKey}\"")
     }
