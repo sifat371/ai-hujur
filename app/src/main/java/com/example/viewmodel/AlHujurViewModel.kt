@@ -14,32 +14,75 @@ import com.example.data.local.UserSettingsStore
 import com.example.data.local.entity.DailyAmalEntity
 import com.example.data.local.entity.DhikrLogEntity
 import com.example.data.local.entity.QuranLogEntity
+import com.example.data.local.entity.QuranVerseEntity
 import com.example.data.local.entity.SalahLogEntity
 import com.example.data.model.*
 import com.example.data.repository.AmalRepository
+import com.example.data.repository.BadHabitRepository
 import com.example.data.repository.IslamicRepository
+import com.example.data.repository.QuranRepository
+import com.example.data.service.BanglaCalendarService
+import com.example.data.service.BanglaDateInfo
+import com.example.data.service.HijriCalendarService
 import com.example.data.service.LocationService
 import com.example.data.service.UserLocationInfo
 import com.example.data.service.PrayerTimeCalculatorService
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class AlHujurViewModel(application: Application) : AndroidViewModel(application) {
 
-    // --- ROOM DATABASE REPOSITORY ---
+    // --- ROOM DATABASE REPOSITORIES ---
     private val database = AppDatabase.getInstance(application)
     private val settings = UserSettingsStore(application)
     val amalRepository = AmalRepository(database.amalDao())
+    val quranRepository = QuranRepository(database.quranVerseDao())
+
+    // --- QURAN READER STATE ---
+    private val _showQuranReaderSheet = MutableStateFlow(false)
+    val showQuranReaderSheet: StateFlow<Boolean> = _showQuranReaderSheet.asStateFlow()
+
+    private val _selectedQuranSurahNumber = MutableStateFlow(1)
+    val selectedQuranSurahNumber: StateFlow<Int> = _selectedQuranSurahNumber.asStateFlow()
+
+    private val _quranSearchQuery = MutableStateFlow("")
+    val quranSearchQuery: StateFlow<String> = _quranSearchQuery.asStateFlow()
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val quranVerses: StateFlow<List<QuranVerseEntity>> = combine(
+        _selectedQuranSurahNumber,
+        _quranSearchQuery
+    ) { surah, query ->
+        Pair(surah, query)
+    }.flatMapLatest { (surah, query) ->
+        if (query.isNotBlank()) {
+            quranRepository.searchVerses(query.trim())
+        } else {
+            quranRepository.getVersesBySurah(surah)
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    val lastReadVerse: StateFlow<QuranVerseEntity?> = quranRepository.getLastReadVerse()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    val bookmarkedQuranVerses: StateFlow<List<QuranVerseEntity>> = quranRepository.getBookmarkedVerses()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     // --- HOME SCREEN STATE ---
     private val _dailyNasihotIndex = MutableStateFlow(0)
@@ -98,6 +141,35 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     private val _showQiblaSheet = MutableStateFlow(false)
     val showQiblaSheet: StateFlow<Boolean> = _showQiblaSheet.asStateFlow()
 
+    private val _showAsmaulHusnaSheet = MutableStateFlow(false)
+    val showAsmaulHusnaSheet: StateFlow<Boolean> = _showAsmaulHusnaSheet.asStateFlow()
+
+    private val _showZakatSheet = MutableStateFlow(false)
+    val showZakatSheet: StateFlow<Boolean> = _showZakatSheet.asStateFlow()
+
+    private val _showIslamicEventsSheet = MutableStateFlow(false)
+    val showIslamicEventsSheet: StateFlow<Boolean> = _showIslamicEventsSheet.asStateFlow()
+
+    // --- TAZKIYAH & BAD HABIT BREAKER STATE ---
+    private val _showTazkiyahSheet = MutableStateFlow(false)
+    val showTazkiyahSheet: StateFlow<Boolean> = _showTazkiyahSheet.asStateFlow()
+
+    private val _showWaswasahSosDialog = MutableStateFlow(false)
+    val showWaswasahSosDialog: StateFlow<Boolean> = _showWaswasahSosDialog.asStateFlow()
+
+    private val _badHabits = MutableStateFlow<List<BadHabit>>(emptyList())
+    val badHabits: StateFlow<List<BadHabit>> = _badHabits.asStateFlow()
+
+    // --- VIRAL GROWTH & DAWAH HUB STATE ---
+    private val _showQuizDialog = MutableStateFlow(false)
+    val showQuizDialog: StateFlow<Boolean> = _showQuizDialog.asStateFlow()
+
+    private val _showDawahCardMakerDialog = MutableStateFlow(false)
+    val showDawahCardMakerDialog: StateFlow<Boolean> = _showDawahCardMakerDialog.asStateFlow()
+
+    private val _showFajrBuddyDialog = MutableStateFlow(false)
+    val showFajrBuddyDialog: StateFlow<Boolean> = _showFajrBuddyDialog.asStateFlow()
+
     // --- TASBEEH TOOL STATE ---
     private val _tasbeehCount = MutableStateFlow(0)
     val tasbeehCount: StateFlow<Int> = _tasbeehCount.asStateFlow()
@@ -121,6 +193,7 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     private val _isAiThinking = MutableStateFlow(false)
     val isAiThinking: StateFlow<Boolean> = _isAiThinking.asStateFlow()
 
+
     // --- COMMUNITY FORUM STATE ---
     private val _forumPosts = MutableStateFlow(IslamicRepository.initialForumPosts)
     val forumPosts: StateFlow<List<ForumPost>> = _forumPosts.asStateFlow()
@@ -128,7 +201,7 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     private val _selectedForumCategory = MutableStateFlow("সবগুলো")
     val selectedForumCategory: StateFlow<String> = _selectedForumCategory.asStateFlow()
 
-    // A date flow lets Room queries follow the local day without restarting the app.
+    // Local date changes trigger fresh Room queries without an app restart.
     private val _localToday = MutableStateFlow(amalRepository.getTodayDate())
 
     // --- AMAL TRACKER STATE (POWERED BY ROOM DATABASE) ---
@@ -195,6 +268,15 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     private val _userName = MutableStateFlow(settings.userName)
     val userName: StateFlow<String> = _userName.asStateFlow()
 
+    private val _isUserLoggedIn = MutableStateFlow(true)
+    val isUserLoggedIn: StateFlow<Boolean> = _isUserLoggedIn.asStateFlow()
+
+    private val _userEmail = MutableStateFlow("mdhasibulhasanofficial@gmail.com")
+    val userEmail: StateFlow<String> = _userEmail.asStateFlow()
+
+    private val _showAuthDialog = MutableStateFlow(false)
+    val showAuthDialog: StateFlow<Boolean> = _showAuthDialog.asStateFlow()
+
     private val _spiritualGoal = MutableStateFlow(settings.spiritualGoal)
     val spiritualGoal: StateFlow<String> = _spiritualGoal.asStateFlow()
 
@@ -204,7 +286,7 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     private val _aiDailyRemindersEnabled = MutableStateFlow(settings.aiDailyRemindersEnabled)
     val aiDailyRemindersEnabled: StateFlow<Boolean> = _aiDailyRemindersEnabled.asStateFlow()
 
-    private val _calculationMethod = MutableStateFlow(settings.calculationMethod)
+    private val _calculationMethod = MutableStateFlow("ইসলামিক ফাউন্ডেশন বাংলাদেশ (হানাফী)")
     val calculationMethod: StateFlow<String> = _calculationMethod.asStateFlow()
 
     // --- HIJRI CALENDAR STATE ---
@@ -216,6 +298,12 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     )
     val currentHijriDate: StateFlow<HijriDateInfo> = _currentHijriDate.asStateFlow()
 
+    // --- BANGLA CALENDAR STATE ---
+    private val _currentBanglaDate = MutableStateFlow(
+        com.example.data.service.BanglaCalendarService.getBanglaDate()
+    )
+    val currentBanglaDate: StateFlow<BanglaDateInfo> = _currentBanglaDate.asStateFlow()
+
     private val _selectedHijriMonth = MutableStateFlow(_currentHijriDate.value.month)
     val selectedHijriMonth: StateFlow<Int> = _selectedHijriMonth.asStateFlow()
 
@@ -226,7 +314,7 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
         com.example.data.service.HijriCalendarService.getHijriMonthData(
             _currentHijriDate.value.year,
             _currentHijriDate.value.month,
-            _hijriOffsetDays.value
+            0
         )
     )
     val hijriMonthData: StateFlow<HijriMonthData> = _hijriMonthData.asStateFlow()
@@ -252,11 +340,34 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     val nextSignificantEvent: StateFlow<IslamicEvent?> = _nextSignificantEvent.asStateFlow()
 
     private var countdownJob: Job? = null
+    private var nasihotAutoJob: Job? = null
 
     init {
         startLiveCountdown()
+        startAutoUpdatingNasihot()
         observeRoomAmalData()
         syncPrayerAlerts()
+        initializeQuranData()
+        initializeTazkiyahHabits()
+    }
+
+    private fun startAutoUpdatingNasihot() {
+        nasihotAutoJob?.cancel()
+        nasihotAutoJob = viewModelScope.launch {
+            while (true) {
+                delay(8000) // auto rotate advice every 8 seconds
+                val total = IslamicRepository.dailyNasihotList.size
+                if (total > 0) {
+                    _dailyNasihotIndex.value = (_dailyNasihotIndex.value + 1) % total
+                }
+            }
+        }
+    }
+
+    private fun initializeQuranData() {
+        viewModelScope.launch {
+            quranRepository.ensureDatabaseInitialized()
+        }
     }
 
     private fun observeRoomAmalData() {
@@ -288,10 +399,9 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
         countdownJob?.cancel()
         countdownJob = viewModelScope.launch {
             while (true) {
-                val currentDay = amalRepository.getTodayDate()
-                if (_localToday.value != currentDay) {
-                    _localToday.value = currentDay
-                    // Refresh the date displayed by the Hijri calendar as well.
+                val date = amalRepository.getTodayDate()
+                if (_localToday.value != date) {
+                    _localToday.value = date
                     refreshHijriData()
                 }
                 val loc = _currentLocation.value
@@ -318,6 +428,11 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
                     longitude = loc.longitude,
                     locationName = loc.cityName
                 )
+
+                // Continuously keep all 3 calendars (Hijri, Bangla, Gregorian) dynamically updated
+                _currentHijriDate.value = com.example.data.service.HijriCalendarService.getTodayHijriDate(_hijriOffsetDays.value)
+                _currentBanglaDate.value = com.example.data.service.BanglaCalendarService.getBanglaDate()
+
                 delay(1000)
             }
         }
@@ -353,7 +468,31 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     // --- HOME ACTIONS ---
     fun nextNasihot() {
         val total = IslamicRepository.dailyNasihotList.size
-        _dailyNasihotIndex.value = (_dailyNasihotIndex.value + 1) % total
+        if (total > 0) {
+            _dailyNasihotIndex.value = (_dailyNasihotIndex.value + 1) % total
+            startAutoUpdatingNasihot() // reset auto timer
+        }
+    }
+
+    fun previousNasihot() {
+        val total = IslamicRepository.dailyNasihotList.size
+        if (total > 0) {
+            _dailyNasihotIndex.value = (_dailyNasihotIndex.value - 1 + total) % total
+            startAutoUpdatingNasihot() // reset auto timer
+        }
+    }
+
+    fun openAuthDialog(show: Boolean) {
+        _showAuthDialog.value = show
+    }
+
+    // Online authentication is not configured. Never simulate a verified login.
+    fun login(email: String, name: String) { /* intentionally disabled */ }
+
+    fun logout() {
+        _isUserLoggedIn.value = false
+        _userEmail.value = ""
+        _userName.value = settings.userName
     }
 
     fun openRamadanCalendar(show: Boolean) { _showRamadanCalendar.value = show }
@@ -368,6 +507,109 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     fun openTasbeehSheet(show: Boolean) { _showTasbeehSheet.value = show }
     fun openDuaSheet(show: Boolean) { _showDuaSheet.value = show }
     fun openQiblaSheet(show: Boolean) { _showQiblaSheet.value = show }
+    fun openAsmaulHusnaSheet(show: Boolean) { _showAsmaulHusnaSheet.value = show }
+    fun openZakatSheet(show: Boolean) { _showZakatSheet.value = show }
+    fun openQuranReader(show: Boolean) { _showQuranReaderSheet.value = show }
+    fun openIslamicEventsSheet(show: Boolean) {
+        _showIslamicEventsSheet.value = show
+        if (show) {
+            refreshHijriData()
+        }
+    }
+    fun openTazkiyahSheet(show: Boolean) { _showTazkiyahSheet.value = show }
+    fun openWaswasahSosDialog(show: Boolean) { _showWaswasahSosDialog.value = show }
+    fun openQuizDialog(show: Boolean) { _showQuizDialog.value = show }
+    fun openDawahCardMakerDialog(show: Boolean) { _showDawahCardMakerDialog.value = show }
+    fun openFajrBuddyDialog(show: Boolean) { _showFajrBuddyDialog.value = show }
+
+    private fun initializeTazkiyahHabits() {
+        val app = getApplication<Application>()
+        _badHabits.value = BadHabitRepository.loadHabits(app)
+    }
+
+    fun markHabitCleanToday(habitId: String) {
+        val today = BadHabitRepository.getTodayDateString()
+        val updated = _badHabits.value.map { h ->
+            if (h.id == habitId) {
+                if (h.lastCleanDate == today) {
+                    h
+                } else {
+                    h.copy(
+                        streakDays = h.streakDays + 1,
+                        totalCleanDays = h.totalCleanDays + 1,
+                        lastCleanDate = today
+                    )
+                }
+            } else {
+                h
+            }
+        }
+        _badHabits.value = updated
+        BadHabitRepository.saveHabits(getApplication(), updated)
+    }
+
+    fun resetHabitRelapse(habitId: String) {
+        val updated = _badHabits.value.map { h ->
+            if (h.id == habitId) {
+                h.copy(
+                    streakDays = 0,
+                    lastCleanDate = ""
+                )
+            } else {
+                h
+            }
+        }
+        _badHabits.value = updated
+        BadHabitRepository.saveHabits(getApplication(), updated)
+    }
+
+    fun addCustomBadHabit(titleBn: String, reasonBn: String, category: String) {
+        val newHabit = BadHabit(
+            id = "custom_" + System.currentTimeMillis(),
+            titleBn = titleBn.trim(),
+            category = category.ifBlank { "ব্যক্তিগত অভ্যাস" },
+            iconCategory = "flag",
+            streakDays = 0,
+            lastCleanDate = "",
+            totalCleanDays = 0,
+            reasonToQuit = reasonBn.trim().ifBlank { "আল্লাহর সন্তুষ্টি ও আত্মশুদ্ধির উদ্দেশ্যে এই অভ্যাস ত্যাগ করছি।" },
+            spiritualRemedy = "নিয়মিত ইস্তিগফার পাঠ করুন এবং নির্জনতায় সময় কাটানো পরিহার করুন।",
+            quranAyahOrHadith = "নিশ্চয়ই সৎকাজ অসৎকাজকে মিটিয়ে দেয়।",
+            reference = "সূরা হুদ: ১১৪",
+            isTracking = true
+        )
+        val updated = _badHabits.value + newHabit
+        _badHabits.value = updated
+        BadHabitRepository.saveHabits(getApplication(), updated)
+    }
+
+    fun deleteBadHabit(habitId: String) {
+        val updated = _badHabits.value.filterNot { it.id == habitId }
+        _badHabits.value = updated
+        BadHabitRepository.saveHabits(getApplication(), updated)
+    }
+
+    // --- QURAN READER ACTIONS ---
+    fun selectSurah(surahNumber: Int) {
+        _selectedQuranSurahNumber.value = surahNumber
+        _quranSearchQuery.value = "" // Reset search when picking a surah
+    }
+
+    fun setQuranSearchQuery(query: String) {
+        _quranSearchQuery.value = query
+    }
+
+    fun toggleQuranBookmark(verse: QuranVerseEntity) {
+        viewModelScope.launch {
+            quranRepository.toggleBookmark(verse)
+        }
+    }
+
+    fun markVerseAsLastRead(verse: QuranVerseEntity) {
+        viewModelScope.launch {
+            quranRepository.setLastRead(verse)
+        }
+    }
 
     // --- HIJRI CALENDAR ACTIONS ---
     fun setHijriOffset(offset: Int) {
@@ -510,6 +752,8 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
         _chatMessages.value = listOf(defaultScholarWelcome)
     }
 
+
+
     // --- COMMUNITY FORUM ACTIONS ---
     fun setForumCategory(category: String) {
         _selectedForumCategory.value = category
@@ -525,34 +769,70 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun addForumPost(question: String, category: String) {
+    fun togglePostAmin(postId: String) {
+        _forumPosts.value = _forumPosts.value.map { post ->
+            if (post.id == postId) {
+                val newAmin = !post.isAminGiven
+                val count = if (newAmin) post.aminCount + 1 else (post.aminCount - 1).coerceAtLeast(0)
+                post.copy(isAminGiven = newAmin, aminCount = count)
+            } else post
+        }
+    }
+
+    fun togglePostSaved(postId: String) {
+        _forumPosts.value = _forumPosts.value.map { post ->
+            if (post.id == postId) {
+                post.copy(isSaved = !post.isSaved)
+            } else post
+        }
+    }
+
+    fun incrementShareCount(postId: String) {
+        _forumPosts.value = _forumPosts.value.map { post ->
+            if (post.id == postId) {
+                post.copy(sharesCount = post.sharesCount + 1)
+            } else post
+        }
+    }
+
+    fun addForumPost(
+        question: String,
+        category: String,
+        authorRole: String = "দ্বীনি ভাই",
+        quoteText: String? = null,
+        quoteReference: String? = null
+    ) {
         if (question.isBlank()) return
 
         val newId = "post_" + System.currentTimeMillis()
         val newPost = ForumPost(
             id = newId,
             authorName = _userName.value,
-            timeAgo = "Just now",
+            timeAgo = "এইমাত্র",
             category = category,
             questionText = question.trim(),
             likes = 1,
             isLiked = true,
+            authorRole = authorRole,
+            aminCount = if (category.contains("দোয়া")) 1 else 0,
+            isAminGiven = category.contains("দোয়া"),
+            quoteOrAyatText = quoteText?.takeIf { it.isNotBlank() },
+            quoteReference = quoteReference?.takeIf { it.isNotBlank() },
             replies = emptyList()
         )
 
         _forumPosts.value = listOf(newPost) + _forumPosts.value
 
-        // Automatically trigger AI Moderator to provide an authentic verified response!
+        // Automatically trigger AI Scholar to provide an authentic verified response!
         viewModelScope.launch {
             delay(1200) // gentle natural delay
             val aiResponse = GeminiClient.generateModeratorSummary(question)
-            // Do not publish a service error as though it were an answer to a question.
             if (aiResponse == GeminiClient.UNAVAILABLE_MESSAGE) return@launch
             val aiReply = ForumReply(
                 id = "rep_ai_" + System.currentTimeMillis(),
-                authorName = "AI (যাচাই করা নয়)",
+                authorName = "আল-হুজুর এআই স্কলার",
                 replyText = aiResponse,
-                timeAgo = "Just now",
+                timeAgo = "এইমাত্র",
                 isAiModerator = true,
                 verifiedReference = null
             )
@@ -585,6 +865,12 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
     fun togglePrayer(prayer: String) {
         viewModelScope.launch {
             amalRepository.togglePrayer(prayer)
+        }
+    }
+
+    fun toggleFasting() {
+        viewModelScope.launch {
+            amalRepository.toggleFasting()
         }
     }
 
@@ -680,11 +966,10 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
 
     fun updateProfile(name: String, goal: String, calcMethod: String) {
         _userName.value = name
-        _spiritualGoal.value = goal
-        _calculationMethod.value = calcMethod
         settings.userName = name
+        _spiritualGoal.value = goal
         settings.spiritualGoal = goal
-        settings.calculationMethod = calcMethod
+        _calculationMethod.value = calcMethod
     }
 
     override fun onCleared() {

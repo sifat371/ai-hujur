@@ -37,7 +37,15 @@ data class ForumPost(
     val questionText: String,
     val likes: Int = 0,
     val isLiked: Boolean = false,
-    val replies: List<ForumReply> = emptyList()
+    val replies: List<ForumReply> = emptyList(),
+    val authorRole: String = "দ্বীনি ভাই",
+    val isVerified: Boolean = false,
+    val aminCount: Int = 0,
+    val isAminGiven: Boolean = false,
+    val isSaved: Boolean = false,
+    val sharesCount: Int = 0,
+    val quoteOrAyatText: String? = null,
+    val quoteReference: String? = null
 )
 
 data class ForumReply(
@@ -92,7 +100,18 @@ data class RamadanCalendarDay(
     val dayOfWeek: String,
     val sehriTime: String,
     val iftarTime: String,
-    val isToday: Boolean = false
+    val isToday: Boolean = false,
+    val phase: String = "রহমত"
+)
+
+data class RamadanSpecialDua(
+    val id: String,
+    val title: String,
+    val occasion: String,
+    val arabicText: String,
+    val pronunciationBn: String,
+    val meaningBn: String,
+    val reference: String
 )
 
 data class LibraryItem(

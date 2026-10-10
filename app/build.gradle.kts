@@ -9,20 +9,6 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
-val developerSettings = Properties()
-val developerEnv = rootProject.file(".env")
-if (developerEnv.isFile) developerEnv.inputStream().use(developerSettings::load)
-val localGeminiKey = providers.environmentVariable("GEMINI_API_KEY").orNull
-    ?: developerSettings.getProperty("GEMINI_API_KEY", "MY_GEMINI_API_KEY")
-val keyStorePath = System.getenv("KEYSTORE_PATH")
-val keyStorePassword = System.getenv("STORE_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD")
-val keyPassword = System.getenv("KEY_PASSWORD") ?: keyStorePassword
-val keyAlias = System.getenv("KEY_ALIAS")
-val releaseSigningConfigured = !keyStorePath.isNullOrBlank() &&
-    file(keyStorePath).isFile && !keyStorePassword.isNullOrBlank() &&
-    !keyPassword.isNullOrBlank() && !keyAlias.isNullOrBlank()
-
-
 android {
   namespace = "com.example"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
@@ -31,35 +17,47 @@ android {
     applicationId = "com.aistudio.alhujurai.mkhzqp"
     minSdk = 24
     targetSdk = 36
-    versionCode = 2
-    versionName = "2.0"
+    versionCode = 9
+    versionName = "9.0-qa"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
+  // Keep release uploads unsigned until a real upload keystore is configured.
+  // Never fall back to the debug key for a production artifact.
   signingConfigs {
-    if (releaseSigningConfigured) {
+    val storePath = System.getenv("KEYSTORE_PATH")
+    val storePass = System.getenv("STORE_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD")
+    val keyAliasEnv = System.getenv("KEY_ALIAS")
+    val keyPass = System.getenv("KEY_PASSWORD") ?: storePass
+    if (!storePath.isNullOrBlank() && file(storePath).isFile &&
+        !storePass.isNullOrBlank() && !keyPass.isNullOrBlank() && !keyAliasEnv.isNullOrBlank()) {
       create("release") {
-        storeFile = file(keyStorePath!!)
-        storePassword = keyStorePassword!!
-        keyAlias = keyAlias!!
-        keyPassword = keyPassword!!
+        storeFile = file(storePath)
+        storePassword = storePass
+        keyAlias = keyAliasEnv
+        keyPassword = keyPass
       }
     }
   }
+
+  val localProperties = Properties()
+  val localEnv = rootProject.file(".env")
+  if (localEnv.exists()) localEnv.inputStream().use { localProperties.load(it) }
+  val localGeminiKey = System.getenv("GEMINI_API_KEY")
+      ?: localProperties.getProperty("GEMINI_API_KEY", "MY_GEMINI_API_KEY")
 
   buildTypes {
     release {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      // Never fall back to debug signing; an unsigned release cannot be published.
-      signingConfig = if (releaseSigningConfigured) signingConfigs.getByName("release") else null
+      signingConfig = signingConfigs.findByName("release")
       buildConfigField("String", "GEMINI_API_KEY", "\"\"")
     }
     debug {
-      // Debug-only local key. Production requires a server-side AI gateway.
-      buildConfigField("String", "GEMINI_API_KEY", "\"${localGeminiKey}\"")
+      // Test-only key. Never distribute an APK containing an unrestricted paid key.
+      buildConfigField("String", "GEMINI_API_KEY", "\"${localGeminiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
     }
   }
   compileOptions {

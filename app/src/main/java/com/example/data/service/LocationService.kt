@@ -24,19 +24,34 @@ data class UserLocationInfo(
 object LocationService {
 
     // Default Islamic Bangladesh presets
-    val DHAKA = UserLocationInfo(23.8103, 90.4125, "ঢাকা (বাংলাদেশ)", false)
-    val CHITTAGONG = UserLocationInfo(22.3569, 91.7832, "চট্টগ্রাম (বাংলাদেশ)", false)
-    val SYLHET = UserLocationInfo(24.8949, 91.8687, "সিলেট (বাংলাদেশ)", false)
-    val RAJSHAHI = UserLocationInfo(24.3745, 88.6042, "রাজশাহী (বাংলাদেশ)", false)
-    val KHULNA = UserLocationInfo(22.8456, 89.5403, "খুলনা (বাংলাদেশ)", false)
-    val BARISHAL = UserLocationInfo(22.7010, 90.3535, "বরিশাল (বাংলাদেশ)", false)
-    val RANGPUR = UserLocationInfo(25.7439, 89.2752, "রংপুর (বাংলাদেশ)", false)
-    val MYMENSINGH = UserLocationInfo(24.7471, 90.4203, "ময়মনসিংহ (বাংলাদেশ)", false)
+    val DHAKA = UserLocationInfo(23.8103, 90.4125, "ঢাকা", false)
+    val CHITTAGONG = UserLocationInfo(22.3569, 91.7832, "চট্টগ্রাম", false)
+    val SYLHET = UserLocationInfo(24.8949, 91.8687, "সিলেট", false)
+    val RAJSHAHI = UserLocationInfo(24.3745, 88.6042, "রাজশাহী", false)
+    val KHULNA = UserLocationInfo(22.8456, 89.5403, "খুলনা", false)
+    val BARISHAL = UserLocationInfo(22.7010, 90.3535, "বরিশাল", false)
+    val RANGPUR = UserLocationInfo(25.7439, 89.2752, "রংপুর", false)
+    val MYMENSINGH = UserLocationInfo(24.7471, 90.4203, "ময়মনসিংহ", false)
+    val CUMILLA = UserLocationInfo(23.4682, 91.1788, "কুমিল্লা", false)
+    val COX_BAZAR = UserLocationInfo(21.4272, 92.0058, "কক্সবাজার", false)
+    val BOGURA = UserLocationInfo(24.8465, 89.3777, "বগুড়া", false)
+    val JASHORE = UserLocationInfo(23.1634, 89.2182, "যশোর", false)
+    val NOAKHALI = UserLocationInfo(22.8696, 91.0994, "নোয়াখালী", false)
+    val FARIDPUR = UserLocationInfo(23.6071, 89.8429, "ফরিদপুর", false)
+    val KUSHTIA = UserLocationInfo(23.9013, 89.1204, "কুষ্টিয়া", false)
+    val DINAJPUR = UserLocationInfo(25.6279, 88.6332, "দিনাজপুর", false)
+    val PABNA = UserLocationInfo(24.0064, 89.2372, "পাবনা", false)
+    val TANGAIL = UserLocationInfo(24.2513, 89.9167, "টাঙ্গাইল", false)
+    val GAZIPUR = UserLocationInfo(24.0023, 90.4264, "গাজীপুর", false)
+    val NARAYANGANJ = UserLocationInfo(23.6238, 90.5000, "নারায়ণগঞ্জ", false)
+    val BRAHMANBARIA = UserLocationInfo(23.9608, 91.1115, "ব্রাহ্মণবাড়িয়া", false)
     val MAKKAH = UserLocationInfo(21.4225, 39.8262, "পবিত্র মক্কা মুকাররমা", false)
     val MADINAH = UserLocationInfo(24.4672, 39.6111, "মদীনা মুনাওয়ারা", false)
 
     val popularLocations = listOf(
-        DHAKA, CHITTAGONG, SYLHET, RAJSHAHI, KHULNA, BARISHAL, RANGPUR, MYMENSINGH, MAKKAH, MADINAH
+        DHAKA, CHITTAGONG, SYLHET, RAJSHAHI, KHULNA, BARISHAL, RANGPUR, MYMENSINGH,
+        CUMILLA, COX_BAZAR, BOGURA, JASHORE, NOAKHALI, FARIDPUR, KUSHTIA, DINAJPUR,
+        PABNA, TANGAIL, GAZIPUR, NARAYANGANJ, BRAHMANBARIA, MAKKAH, MADINAH
     )
 
     fun hasLocationPermission(context: Context): Boolean {

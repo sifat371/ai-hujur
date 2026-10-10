@@ -9,7 +9,7 @@ import kotlin.math.*
 /**
  * Astronomical Prayer Times Calculator Service
  * Estimates daily Islamic prayer times (Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha)
- * based on coordinates and date. These are estimates and not verified official schedules.
+ * based on geographical coordinates and date; not validated against local official schedules.
  * Implements standard conventions (including Karachi/Islamic Foundation 18° twilight angles and Hanafi/Shafi'i Asr).
  */
 object PrayerTimeCalculatorService {
@@ -24,7 +24,19 @@ object PrayerTimeCalculatorService {
         val date: Date,
         val latitude: Double,
         val longitude: Double,
-        val locationName: String
+        val locationName: String,
+        // Islamic Foundation Bangladesh standard: Sehri ends 3 mins before Subh Sadiq
+        val sehriEndMinutes: Int = ((fajrMinutes - 3) + 1440) % 1440,
+        // Ishraq nafl prayer starts 15 mins after sunrise
+        val ishraqMinutes: Int = ((sunriseMinutes + 15) + 1440) % 1440,
+        // Chasht/Duha nafl prayer
+        val chashatMinutes: Int = ((sunriseMinutes + 45) + 1440) % 1440,
+        // Zawal makruh/forbidden period: 10 mins before Dhuhr noon
+        val zawalForbiddenMinutes: Int = ((dhuhrMinutes - 10) + 1440) % 1440,
+        // Iftar time coincides with Maghrib (sunset + 2 min precaution)
+        val iftarMinutes: Int = maghribMinutes,
+        // Tahajjud best time: last third of night (approx 1.5 hr before Sehri)
+        val tahajjudBestMinutes: Int = ((fajrMinutes - 90) + 1440) % 1440
     ) {
         fun formatTime(minutes: Int): String {
             val totalMinutes = (minutes + 1440) % 1440
@@ -33,6 +45,25 @@ object PrayerTimeCalculatorService {
             val amPm = if (hours >= 12) "অপরাহ্ন" else "পূর্বাহ্ন"
             val displayHour = if (hours % 12 == 0) 12 else hours % 12
             return String.format(Locale.US, "%02d:%02d %s", displayHour, mins, amPm)
+        }
+
+        fun formatTimeBengali(minutes: Int): String {
+            val totalMinutes = (minutes + 1440) % 1440
+            val hours = totalMinutes / 60
+            val mins = totalMinutes % 60
+            val period = when {
+                hours in 3..4 -> "ভোর"
+                hours in 5..11 -> "সকাল"
+                hours in 12..14 -> "দুপুর"
+                hours in 15..17 -> "বিকাল"
+                hours in 18..19 -> "সন্ধ্যা"
+                else -> "রাত"
+            }
+            val displayHour = if (hours % 12 == 0) 12 else hours % 12
+            val hBn = HijriCalendarService.toBengaliDigits(displayHour)
+            val mDigits = HijriCalendarService.toBengaliDigits(mins)
+            val mBn = if (mins < 10) "০$mDigits" else mDigits
+            return "$period $hBn:$mBn"
         }
 
         fun toPrayerMinutesList(): List<Pair<String, Int>> = listOf(

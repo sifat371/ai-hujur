@@ -218,11 +218,97 @@ fun DailyPrayerTimesHomeCard(
                 }
             }
 
+            // Accurate Ramadan / Daily Sehri & Iftar Times Pill
+            val detailedSchedule = remember(currentLocation.latitude, currentLocation.longitude) {
+                com.example.data.service.PrayerTimeCalculatorService.calculatePrayerTimes(
+                    latitude = currentLocation.latitude,
+                    longitude = currentLocation.longitude,
+                    locationName = currentLocation.cityName
+                )
+            }
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0x2210B981),
+                border = BorderStroke(1.dp, EmeraldSuccess.copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.NightsStay,
+                            contentDescription = null,
+                            tint = EmeraldSuccess,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = "সাহরি শেষ: ${detailedSchedule.formatTimeBengali(detailedSchedule.sehriEndMinutes)}",
+                            color = EmeraldSuccess,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.WbTwilight,
+                            contentDescription = null,
+                            tint = BrightGold,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = "ইফতার: ${detailedSchedule.formatTimeBengali(detailedSchedule.iftarMinutes)}",
+                            color = BrightGold,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
             // The 5 Main Daily Prayer Times (Fajr, Dhuhr, Asr, Maghrib, Isha) formatted grid/list
             Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 // Filter and show the core 5 daily prayers (plus sunrise for clarification)
                 prayerTimes.forEach { prayer ->
                     PrayerTimeRowItem(prayer = prayer)
+                }
+            }
+
+            // 3 Forbidden Prayer Times Notice (মাকরূহ ওয়াক্ত)
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = NavySurface,
+                border = BorderStroke(0.6.dp, Color(0x33EF4444)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.WarningAmber,
+                        contentDescription = null,
+                        tint = Color(0xFFF87171),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = "নামাজের ৩টি নিষিদ্ধ সময়: সূর্যোদয় (১৫ মি.), ঠিক দুপুর (জাওয়াল), সূর্যাস্তের ১৫ মি.",
+                        color = TextMuted,
+                        fontSize = 10.sp
+                    )
                 }
             }
 

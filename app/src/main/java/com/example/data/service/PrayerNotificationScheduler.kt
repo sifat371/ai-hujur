@@ -82,7 +82,6 @@ object PrayerNotificationScheduler {
         longitude: Double = LocationService.DHAKA.longitude,
         locationName: String = LocationService.DHAKA.cityName
     ) {
-        // Do not reschedule reminders when users have opted out.
         if (!UserSettingsStore(context).prayerNotificationsEnabled) {
             cancelAllPrayerAlerts(context)
             return

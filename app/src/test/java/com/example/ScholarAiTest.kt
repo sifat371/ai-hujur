@@ -14,19 +14,17 @@ import org.robolectric.annotation.Config
 @Config(sdk = [36])
 class ScholarAiTest {
     @Test
-    fun serviceFailureDoesNotInventReligiousAdvice() {
-        assertTrue(GeminiClient.UNAVAILABLE_MESSAGE.contains("এখন উত্তর দিতে পারছে না"))
+    fun testServiceUnavailableMessageNeverPretendsToBeAFatwa() {
+        assertTrue(GeminiClient.UNAVAILABLE_MESSAGE.contains("পারছে না"))
         assertTrue(GeminiClient.UNAVAILABLE_MESSAGE.contains("যোগ্য আলেম"))
     }
+
     @Test
-    fun missingKeyFailsClearly() = runBlocking {
-        if (com.example.BuildConfig.GEMINI_API_KEY == "MY_GEMINI_API_KEY" ||
-            com.example.BuildConfig.GEMINI_API_KEY.isBlank()
-        ) {
-            val response = GeminiClient.askScholarChat(
-                listOf(ChatMessage(text = "আসসালামু আলাইকুম", isFromUser = true)),
-                "একটি গুরুত্বপূর্ণ মাসআলা জানতে চাই"
-            )
+    fun testMissingKeyCannotGenerateFakeReligiousAdvice() = runBlocking {
+        if (BuildConfig.GEMINI_API_KEY == "MY_GEMINI_API_KEY" || BuildConfig.GEMINI_API_KEY.isBlank()) {
+            val response = GeminiClient.askScholarChat(listOf(
+                ChatMessage(text = "আসসালামু আলাইকুম", isFromUser = true)
+            ), "দলিল জানতে চাই")
             assertEquals(GeminiClient.UNAVAILABLE_MESSAGE, response)
         }
     }

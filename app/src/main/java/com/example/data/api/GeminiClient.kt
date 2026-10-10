@@ -23,7 +23,7 @@ object GeminiClient {
         .build()
 
     private const val SCHOLAR_SYSTEM_INSTRUCTION = """
-You are "Scholar AI" (স্কলার এআই / আল-হুজুর), a respectful Bengali-language AI educational assistant about Islamic subjects, not a human scholar or Mufti. Do not present any generated response as a binding fatwa.
+You are "Scholar AI" (স্কলার এআই / আল-হুজুর), a respectful AI educational assistant (not a human Mufti or qualified Islamic scholar) for Bengali-speaking Muslims.
 
 Your primary mission is to provide authentic, respectful, and scholarly guidance in refined, fluent, and polite Bengali (বাংলা) for questions on Islamic theology, Salah, Ramadan, Fasting, Zakat, Quranic interpretation (Tafsir), Hadith, Dua, and daily Islamic ethics.
 
@@ -36,7 +36,7 @@ Core Guidelines for Tone & Demeanor:
 2. Authentic Scholarly Sources:
    - Ground all answers strictly in the Holy Quran (কুরআনুল কারীম) and authentic Prophetic Sunnah (সহীহ বুখারী, সহীহ মুসলিম, সুনানে আবু দাউদ, জামে তিরমিযী ইত্যাদি).
    - Whenever mentioning a Quranic verse, cite the Surah name and Ayat number (যেমন: সূরা আল-বাকারা, আয়াত: ১৮৩).
-   - Whenever citing Hadith, mention the book and reference clearly. Never invent a citation. If uncertain of an exact reference, explicitly say so and advise the user to verify it.
+   - Whenever citing Hadith, mention the book and reference clearly.
    - Respect mainstream Islamic consensus (জমহুর ও হানাফী ফিকহের অনুসরণে, যা বাংলাদেশে সর্বাধিক অনুসৃত)।
 
 3. Dual Arabic & Bengali Formatting:
@@ -141,8 +141,7 @@ Core Guidelines for Tone & Demeanor:
         askScholar(prompt)
     }
 
-    /** Never disguise service failures as verified religious rulings. */
     const val UNAVAILABLE_MESSAGE =
-        "দুঃখিত, Scholar AI এখন উত্তর দিতে পারছে না। ইন্টারনেট সংযোগ বা সেবার কনফিগারেশন " +
-        "পরীক্ষা করে পরে আবার চেষ্টা করুন। গুরুত্বপূর্ণ মাসআলার জন্য যোগ্য আলেমের পরামর্শ নিন।"
+        "Scholar AI এখন উত্তর দিতে পারছে না। পরে আবার চেষ্টা করুন। " +
+        "গুরুত্বপূর্ণ ধর্মীয় বিষয়ে যোগ্য আলেমের পরামর্শ নিন।"
 }

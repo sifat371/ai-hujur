@@ -60,13 +60,12 @@ fun AiChatScreen(
     val isAiThinking by viewModel.isAiThinking.collectAsState()
 
     var inputText by remember { mutableStateOf("") }
-    val voiceInputLauncher = rememberLauncherForActivityResult(
+    val voiceLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val recognized = result.data
-                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-            if (!recognized.isNullOrBlank()) inputText = recognized
+    ) { response ->
+        if (response.resultCode == Activity.RESULT_OK) {
+            val spoken = response.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (!spoken.isNullOrBlank()) inputText = spoken
         }
     }
     var selectedCategory by remember { mutableStateOf("রোজা ও রমজান") }
@@ -262,17 +261,14 @@ fun AiChatScreen(
                     }
                 },
                 onToggleVoice = {
-                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    val speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE, "bn-BD")
                         putExtra(RecognizerIntent.EXTRA_PROMPT, "বাংলায় প্রশ্ন বলুন")
                     }
-                    try {
-                        voiceInputLauncher.launch(intent)
-                    } catch (_: ActivityNotFoundException) {
-                        Toast.makeText(context,
-                            "এই ফোনে ভয়েস ইনপুট সেবা পাওয়া যায়নি", Toast.LENGTH_LONG).show()
+                    try { voiceLauncher.launch(speechIntent) }
+                    catch (_: ActivityNotFoundException) {
+                        Toast.makeText(context, "ভয়েস ইনপুট সেবা পাওয়া যায়নি", Toast.LENGTH_LONG).show()
                     }
                 }
             )
@@ -707,7 +703,7 @@ private fun ChatInputBar(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Mic,
-                        contentDescription = "ভয়েস ইনপুট দিয়ে প্রশ্ন লিখুন",
+                        contentDescription = "ভয়েসে প্রশ্ন লিখুন",
                         tint = MidnightBlue,
                         modifier = Modifier.size(24.dp)
                     )
@@ -716,7 +712,7 @@ private fun ChatInputBar(
 
             // Respectful advisory footer
             Text(
-                text = "জ্ঞাতব্য: এআই উত্তরে ভুল বা ভুল সূত্র থাকতে পারে। গুরুত্বপূর্ণ মাসআলা ও দলিল যোগ্য আলেমের কাছে যাচাই করুন।",
+                text = "জ্ঞাতব্য: এআইয়ের উত্তর ও সূত্র ভুল হতে পারে। গুরুত্বপূর্ণ মাসআলা যোগ্য আলেমের কাছে যাচাই করুন।",
                 color = TextMuted.copy(alpha = 0.7f),
                 fontSize = 9.5.sp,
                 textAlign = TextAlign.Center,

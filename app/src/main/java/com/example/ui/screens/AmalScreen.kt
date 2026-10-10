@@ -28,6 +28,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.data.local.entity.DhikrLogEntity
 import com.example.data.local.entity.QuranLogEntity
 import com.example.ui.components.IslamicGeometricBackground
+import com.example.ui.components.QuranReaderDialog
 import com.example.ui.theme.*
 import com.example.viewmodel.AlHujurViewModel
 
@@ -42,6 +43,7 @@ fun AmalScreen(
     val recentDhikrLogs by viewModel.recentDhikrLogs.collectAsState()
     val recentQuranLogs by viewModel.recentQuranLogs.collectAsState()
     val totalQuranPages by viewModel.totalQuranPages.collectAsState()
+    val showQuranReaderSheet by viewModel.showQuranReaderSheet.collectAsState()
 
     var showLogQuranDialog by remember { mutableStateOf(false) }
     var showLogDhikrDialog by remember { mutableStateOf(false) }
@@ -106,7 +108,8 @@ fun AmalScreen(
                 goalPages = progress.quranDailyGoalPages,
                 allTimePages = totalQuranPages,
                 onAddPage = { viewModel.addQuranPages(1) },
-                onLogDialog = { showLogQuranDialog = true }
+                onLogDialog = { showLogQuranDialog = true },
+                onOpenQuranReader = { viewModel.openQuranReader(true) }
             )
 
             // 3. SECTION: Daily Dhikr & Tasbeeh Tracker (Dhikr)
@@ -153,6 +156,13 @@ fun AmalScreen(
                 viewModel.recordDhikrSession(name, count = count, target = target)
                 showLogDhikrDialog = false
             }
+        )
+    }
+
+    if (showQuranReaderSheet) {
+        QuranReaderDialog(
+            viewModel = viewModel,
+            onDismiss = { viewModel.openQuranReader(false) }
         )
     }
 }
@@ -482,7 +492,8 @@ private fun QuranProgressCard(
     goalPages: Int,
     allTimePages: Int = 0,
     onAddPage: () -> Unit,
-    onLogDialog: () -> Unit
+    onLogDialog: () -> Unit,
+    onOpenQuranReader: (() -> Unit)? = null
 ) {
     val progressRatio = (pagesRead.toFloat() / goalPages.toFloat()).coerceIn(0f, 1f)
 
@@ -641,19 +652,46 @@ private fun QuranProgressCard(
                 }
             }
 
-            // Quick Add Page Button
-            OutlinedButton(
-                onClick = onAddPage,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("add_quran_page_button"),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = BrightGold),
-                border = BorderStroke(1.dp, GoldBorder)
+            // Action Buttons: Open Quran Reader & Quick Add Page
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("আরো ১ পৃষ্ঠা পড়েছি (+১)", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                if (onOpenQuranReader != null) {
+                    Button(
+                        onClick = onOpenQuranReader,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("open_quran_reader_from_amal"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = IslamicGold,
+                            contentColor = MidnightBlue
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("কুরআন পড়ুন", fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                OutlinedButton(
+                    onClick = onAddPage,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("add_quran_page_button"),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BrightGold),
+                    border = BorderStroke(1.dp, GoldBorder)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("১ পৃষ্ঠা (+১)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
             }
         }
     }
