@@ -56,6 +56,9 @@ android {
       buildConfigField("String", "GEMINI_API_KEY", "\"\"")
     }
     debug {
+      // Install QA alongside the Play Store application without replacing its user data.
+      applicationIdSuffix = ".qa"
+      versionNameSuffix = "-debug"
       // Test-only key. Never distribute an APK containing an unrestricted paid key.
       buildConfigField("String", "GEMINI_API_KEY", "\"${localGeminiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
     }
