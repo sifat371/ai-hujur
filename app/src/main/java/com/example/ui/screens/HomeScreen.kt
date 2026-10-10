@@ -63,6 +63,7 @@ fun HomeScreen(
     viewModel: AlHujurViewModel,
     onNavigateToChat: () -> Unit,
     onNavigateToAmal: () -> Unit = {},
+    onNavigateToExplore: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val dailyNasihotIndex by viewModel.dailyNasihotIndex.collectAsState()
@@ -139,21 +140,30 @@ fun HomeScreen(
                 onNavigateToAmal = onNavigateToAmal
             )
 
-            // 5. GRID SECTION: Large Main Buttons
-            MainActionsGrid(
-                onAskAiClick = onNavigateToChat,
-                onHijriCalendarClick = { viewModel.openHijriCalendar(true) },
-                onRamadanCalendarClick = { viewModel.openRamadanCalendar(true) },
-                onPrayerTimesClick = { viewModel.openPrayerTimesSheet(true) },
-                onLibraryClick = { viewModel.openLibrarySheet(true) }
-            )
-
-            // 6. BOTTOM SECTION: Horizontal Scroll of Quick Tools
-            QuickToolsSection(
-                onTasbeehClick = { viewModel.openTasbeehSheet(true) },
-                onDuaClick = { viewModel.openDuaSheet(true) },
-                onQiblaClick = { viewModel.openQiblaSheet(true) }
-            )
+            // Keep the v2 daily overview focused. Optional features live in Explore.
+            Card(
+                modifier = Modifier.fillMaxWidth()
+                    .clickable(onClick = onNavigateToExplore)
+                    .testTag("open_explore"),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = NavyCard),
+                border = BorderStroke(1.dp, GoldBorder)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("আরও ইসলামিক টুলস", color = BrightGold,
+                            fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Text("দোয়া, কিবলা, লাইব্রেরি ও কুইজ",
+                            color = TextMuted, fontSize = 12.sp)
+                    }
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "সব টুলস দেখুন", tint = IslamicGold)
+                }
+            }
         }
     }
 
