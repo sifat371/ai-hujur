@@ -984,11 +984,15 @@ fun PrayerTimesDialog(viewModel: AlHujurViewModel, onDismiss: () -> Unit) {
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        if (isGranted) {
-            if (!prayerNotifications) {
-                viewModel.togglePrayerNotifications()
-            }
+        if (isGranted && !prayerNotifications) {
+            viewModel.togglePrayerNotifications()
         }
+    }
+    // A test alert must not opt the user into recurring prayer notifications.
+    val testPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) testNotificationSent = viewModel.sendTestPrayerAlert()
     }
 
     val requestNotificationPermissionAndToggle = {
@@ -1141,12 +1145,11 @@ fun PrayerTimesDialog(viewModel: AlHujurViewModel, onDismiss: () -> Unit) {
                                             Manifest.permission.POST_NOTIFICATIONS
                                         ) == PackageManager.PERMISSION_GRANTED
                                         if (!hasPermission) {
-                                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                            testPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                             return@OutlinedButton
                                         }
                                     }
-                                    viewModel.sendTestPrayerAlert()
-                                    testNotificationSent = true
+                                    testNotificationSent = viewModel.sendTestPrayerAlert()
                                 },
                                 shape = RoundedCornerShape(12.dp),
                                 border = BorderStroke(1.dp, IslamicGold),
@@ -1171,7 +1174,7 @@ fun PrayerTimesDialog(viewModel: AlHujurViewModel, onDismiss: () -> Unit) {
 
                             if (testNotificationSent) {
                                 Text(
-                                    text = "✓ নোটিফিকেশন পাঠানো হয়েছে",
+                                    text = "✓ টেস্ট নোটিফিকেশন পাঠানো হয়েছে",
                                     color = EmeraldSuccess,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold

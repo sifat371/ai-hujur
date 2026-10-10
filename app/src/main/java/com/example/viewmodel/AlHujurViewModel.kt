@@ -661,15 +661,17 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun sendTestPrayerAlert() {
-        try {
+    fun sendTestPrayerAlert(): Boolean {
+        return try {
             val app = getApplication<Application>()
             val nextPrayer = _prayerTimes.value.find { it.isNext } ?: _prayerTimes.value.firstOrNull()
             val pName = nextPrayer?.name?.split(" ")?.firstOrNull() ?: "যোহর"
             val pTime = nextPrayer?.timeString ?: "০১:১৫ অপরাহ্ন"
             com.example.data.service.PrayerNotificationScheduler.sendInstantTestAlert(app, pName, pTime)
+            true
         } catch (e: Exception) {
             android.util.Log.e("AlHujurViewModel", "Error sending test alert: ${e.message}")
+            false
         }
     }
 

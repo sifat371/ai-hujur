@@ -236,17 +236,14 @@ object PrayerNotificationScheduler {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("নামাজের ওয়াক্ত সতর্কতা: আর ১০ মিনিট বাকি")
-            .setContentText("আসন্ন $prayerName ওয়াক্ত শুরু হতে ১০ মিনিট বাকি ($prayerTimeStr)। ওজু করে নামাজের প্রস্তুতি নিন।")
+            .setContentTitle(PrayerTestNotificationText.TITLE)
+            .setContentText(PrayerTestNotificationText.body(prayerName, prayerTimeStr))
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText(
-                        "আসন্ন $prayerName ওয়াক্ত শুরু হতে ১০ মিনিট বাকি ($prayerTimeStr)।\n" +
-                                "রাসূলুল্লাহ ﷺ বলেছেন: 'নামাজ হলো দ্বীনের খুঁটি।' এখনই সব পার্থিব ব্যস্ততা স্থগিত রেখে ওজু সম্পন্ন করুন এবং প্রথম তাকবীরের সাথে জামাতে নামাজের প্রস্তুতি নিন।"
-                    )
+                    .bigText(PrayerTestNotificationText.body(prayerName, prayerTimeStr))
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .addAction(R.mipmap.ic_launcher, "অ্যাপ খুলুন", pendingIntent)
