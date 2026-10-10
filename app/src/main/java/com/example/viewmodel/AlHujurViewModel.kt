@@ -665,8 +665,8 @@ class AlHujurViewModel(application: Application) : AndroidViewModel(application)
         return try {
             val app = getApplication<Application>()
             val nextPrayer = _prayerTimes.value.find { it.isNext } ?: _prayerTimes.value.firstOrNull()
-            val pName = nextPrayer?.name?.split(" ")?.firstOrNull() ?: "যোহর"
-            val pTime = nextPrayer?.timeString ?: "০১:১৫ অপরাহ্ন"
+            val pName = nextPrayer?.name ?: "পরবর্তী নামাজ"
+            val pTime = nextPrayer?.timeString ?: "সময় উপলব্ধ নয়"
             com.example.data.service.PrayerNotificationScheduler.sendInstantTestAlert(app, pName, pTime)
             true
         } catch (e: Exception) {
