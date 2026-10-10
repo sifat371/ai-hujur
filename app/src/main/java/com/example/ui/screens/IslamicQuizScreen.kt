@@ -54,7 +54,7 @@ fun IslamicQuizScreen(onBack: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("কুইজ সম্পন্ন!", color = BrightGold, fontSize = 22.sp,
                         fontWeight = FontWeight.Bold)
-                    Text("আপনার স্কোর: $"+"score / $"+"{questions.size}",
+                    Text("আপনার স্কোর: ${score} / ${questions.size}",
                         color = TextWhite, fontSize = 18.sp)
                     Button(onClick = {
                         questionIndex = 0; selected = -1; submitted = false; score = 0
@@ -69,7 +69,7 @@ fun IslamicQuizScreen(onBack: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 color = IslamicGold
             )
-            Text("প্রশ্ন $"+ "{questionIndex + 1} / $"+"{questions.size}",
+            Text("প্রশ্ন ${questionIndex + 1} / ${questions.size}",
                 color = TextMuted, fontSize = 13.sp)
             Text(question.question, color = TextWhite, fontSize = 19.sp,
                 fontWeight = FontWeight.SemiBold)
@@ -78,7 +78,7 @@ fun IslamicQuizScreen(onBack: () -> Unit) {
                 Card(
                     modifier = Modifier.fillMaxWidth()
                         .clickable(enabled = !submitted) { selected = index }
-                        .testTag("quiz_option_$"+"index"),
+                        .testTag("quiz_option_${index}"),
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = if (chosen) NavySurface else NavyCard),
@@ -95,7 +95,7 @@ fun IslamicQuizScreen(onBack: () -> Unit) {
             }
             if (submitted) {
                 Text(if (selected == question.correctChoice) "সঠিক উত্তর!"
-                    else "সঠিক উত্তর: $"+ "{question.choices[question.correctChoice]}",
+                    else "সঠিক উত্তর: ${question.choices[question.correctChoice]}",
                     color = BrightGold, fontWeight = FontWeight.SemiBold)
                 Text(question.explanation, color = TextLight, fontSize = 13.sp)
             }
