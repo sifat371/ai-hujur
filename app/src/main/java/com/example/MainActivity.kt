@@ -44,6 +44,9 @@ sealed class Screen(
     object Forum : Screen("forum", "কমিউনিটি", Icons.Default.Forum, Icons.Outlined.Forum, "bottom_nav_forum")
     object Amal : Screen("amal", "আমল ট্র্যাকার", Icons.Default.FactCheck, Icons.Outlined.FactCheck, "bottom_nav_amal")
     object Profile : Screen("profile", "প্রোফাইল", Icons.Default.Person, Icons.Outlined.Person, "bottom_nav_profile")
+    // Secondary destinations: not additional bottom navigation tabs.
+    object Explore : Screen("explore", "আরও টুলস", Icons.Default.GridView, Icons.Outlined.GridView, "screen_explore")
+    object Quiz : Screen("quiz", "ইসলামিক কুইজ", Icons.Default.Quiz, Icons.Outlined.Quiz, "screen_quiz")
 }
 
 class MainActivity : ComponentActivity() {
@@ -83,7 +86,8 @@ fun MainApp(viewModel: AlHujurViewModel = viewModel()) {
                 )
             ) {
                 screens.forEach { screen ->
-                    val isSelected = currentDestination?.route == screen.route
+                    val isSelected = currentDestination?.route == screen.route ||
+                    (screen == Screen.Home && currentDestination?.route in listOf(Screen.Explore.route, Screen.Quiz.route))
 
                     NavigationBarItem(
                         selected = isSelected,
@@ -142,6 +146,9 @@ fun MainApp(viewModel: AlHujurViewModel = viewModel()) {
                             restoreState = true
                         }
                     },
+                    onNavigateToExplore = {
+                        navController.navigate(Screen.Explore.route) { launchSingleTop = true }
+                    },
                     onNavigateToAmal = {
                         navController.navigate(Screen.Amal.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -152,6 +159,16 @@ fun MainApp(viewModel: AlHujurViewModel = viewModel()) {
                         }
                     }
                 )
+            }
+            composable(Screen.Explore.route) {
+                ExploreScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onOpenQuiz = { navController.navigate(Screen.Quiz.route) { launchSingleTop = true } }
+                )
+            }
+            composable(Screen.Quiz.route) {
+                IslamicQuizScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.AskAi.route) {
                 AiChatScreen(viewModel = viewModel)
