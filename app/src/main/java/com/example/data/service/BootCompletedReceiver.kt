@@ -22,12 +22,12 @@ class BootCompletedReceiver : BroadcastReceiver() {
                     PrayerNotificationScheduler.cancelAllPrayerAlerts(context)
                     return
                 }
-                val location = settings.location
+                val loc = settings.location
                 PrayerNotificationScheduler.scheduleAllPrayerAlerts(
                     context = context,
-                    latitude = location.latitude,
-                    longitude = location.longitude,
-                    locationName = location.cityName
+                    latitude = loc.latitude,
+                    longitude = loc.longitude,
+                    locationName = loc.cityName
                 )
             } catch (e: Exception) {
                 Log.e("BootCompletedReceiver", "Error restoring prayer alarms: ${e.message}")

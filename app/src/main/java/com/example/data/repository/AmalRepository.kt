@@ -5,7 +5,6 @@ import com.example.data.local.entity.DailyAmalEntity
 import com.example.data.local.entity.DhikrLogEntity
 import com.example.data.local.entity.QuranLogEntity
 import com.example.data.local.entity.SalahLogEntity
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -38,8 +37,7 @@ class AmalRepository(private val amalDao: AmalDao) {
         }
     }
 
-    /** Switch the underlying Room query whenever the local calendar date changes. */
-    @OptIn(ExperimentalCoroutinesApi::class)
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     fun observeDailyAmal(dateFlow: Flow<String>): Flow<DailyAmalEntity> =
         dateFlow.flatMapLatest { date ->
             amalDao.getDailyAmal(date).map { it ?: DailyAmalEntity(date = date) }
@@ -116,6 +114,15 @@ class AmalRepository(private val amalDao: AmalDao) {
         togglePrayer(prayer, date)
     }
 
+    suspend fun toggleFasting(date: String = getTodayDate()) {
+        val existing = amalDao.getDailyAmalSync(date) ?: DailyAmalEntity(date = date)
+        val updated = existing.copy(
+            fastingDone = !existing.fastingDone,
+            updatedAt = System.currentTimeMillis()
+        )
+        amalDao.insertOrUpdateDailyAmal(updated)
+    }
+
     /**
      * Records detailed Salah with Jamat (congregation) status.
      */
@@ -149,7 +156,7 @@ class AmalRepository(private val amalDao: AmalDao) {
                 )
             )
         } else {
-            amalDao.deleteSalahLog(date, normalized.replaceFirstChar { it.uppercase() })
+            amalDao.deleteSalahLog(date, prayerName)
         }
     }
 

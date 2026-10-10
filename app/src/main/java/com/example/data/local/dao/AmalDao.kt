@@ -43,14 +43,14 @@ interface AmalDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSalahLog(log: SalahLogEntity)
 
-    @Query("DELETE FROM salah_logs WHERE date = :date AND prayerName = :prayerName COLLATE NOCASE")
-    suspend fun deleteSalahLog(date: String, prayerName: String)
-
     @Transaction
     suspend fun replaceSalahLog(log: SalahLogEntity) {
         deleteSalahLog(log.date, log.prayerName)
         insertSalahLog(log)
     }
+
+    @Query("DELETE FROM salah_logs WHERE date = :date AND prayerName = :prayerName COLLATE NOCASE")
+    suspend fun deleteSalahLog(date: String, prayerName: String)
 
     @Query("SELECT COUNT(*) FROM salah_logs WHERE date = :date AND isPrayed = 1")
     fun getPrayedCountForDate(date: String): Flow<Int>

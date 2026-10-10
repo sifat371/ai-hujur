@@ -1,13 +1,19 @@
 package com.example.ui.screens
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -22,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
@@ -49,12 +56,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import com.example.R
 import com.example.data.repository.IslamicRepository
-import com.example.ui.components.DailyAmalHomeOverviewCard
-import com.example.ui.components.DailyPrayerTimesHomeCard
-import com.example.ui.components.HijriCalendarDialog
-import com.example.ui.components.HijriDateHomeCard
-import com.example.ui.components.IslamicGeometricBackground
-import com.example.ui.components.LocationPickerDialog
+import com.example.data.repository.IslamicUniqueRepository
+import com.example.ui.components.*
 import com.example.ui.theme.*
 import com.example.viewmodel.AlHujurViewModel
 
@@ -81,12 +84,30 @@ fun HomeScreen(
     val showTasbeehSheet by viewModel.showTasbeehSheet.collectAsState()
     val showDuaSheet by viewModel.showDuaSheet.collectAsState()
     val showQiblaSheet by viewModel.showQiblaSheet.collectAsState()
+    val showAsmaulHusnaSheet by viewModel.showAsmaulHusnaSheet.collectAsState()
+    val showZakatSheet by viewModel.showZakatSheet.collectAsState()
+    val showQuranReaderSheet by viewModel.showQuranReaderSheet.collectAsState()
+    val showIslamicEventsSheet by viewModel.showIslamicEventsSheet.collectAsState()
+    val showTazkiyahSheet by viewModel.showTazkiyahSheet.collectAsState()
+    val showWaswasahSosDialog by viewModel.showWaswasahSosDialog.collectAsState()
+    val badHabits by viewModel.badHabits.collectAsState()
+    val showQuizDialog by viewModel.showQuizDialog.collectAsState()
+    val showDawahCardMakerDialog by viewModel.showDawahCardMakerDialog.collectAsState()
+    val showFajrBuddyDialog by viewModel.showFajrBuddyDialog.collectAsState()
 
     // Hijri Calendar Data
     val currentHijriDate by viewModel.currentHijriDate.collectAsState()
+    val currentBanglaDate by viewModel.currentBanglaDate.collectAsState()
     val nextSignificantEvent by viewModel.nextSignificantEvent.collectAsState()
+    val upcomingIslamicEvents by viewModel.upcomingIslamicEvents.collectAsState()
+
+    // User & Auth State
+    val isUserLoggedIn by viewModel.isUserLoggedIn.collectAsState()
+    val userName by viewModel.userName.collectAsState()
+    val showAuthDialog by viewModel.showAuthDialog.collectAsState()
 
     val currentNasihot = IslamicRepository.dailyNasihotList[dailyNasihotIndex]
+    val todayVerse = remember { IslamicUniqueRepository.getTodayVerse() }
 
     Box(
         modifier = modifier
@@ -107,39 +128,73 @@ fun HomeScreen(
                 .padding(top = 16.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            // App Header with dynamic location and current Islamic/Gregorian date
+            // App Header with dynamic location and User Login profile button
             AppHeaderRow(
                 locationName = currentLocation.cityName,
-                hijriDate = currentHijriDate,
+                isLoggedIn = isUserLoggedIn,
+                userName = userName,
                 onLocationClick = { viewModel.openLocationPicker(true) },
-                onDateClick = { viewModel.openHijriCalendar(true) }
+                onAuthClick = { viewModel.openAuthDialog(true) }
             )
 
-            // 1. TOP SECTION: Greeting Card with Scholar Avatar & Daily Nasihot
-            ScholarGreetingCard(
-                nasihot = currentNasihot,
-                onRefreshNasihot = { viewModel.nextNasihot() }
-            )
-
-            // 2. HIJRI CALENDAR & SIGNIFICANT ISLAMIC EVENTS MODULE
-            HijriDateHomeCard(
+            // 1. 3-IN-1 TRIPLE CALENDAR & ISLAMIC SPECIAL DAYS TICKER (উপরে স্থির ৩-ইন-১ ক্যালেন্ডার ও নিচে স্লাইড আকারে বিশেষ দিনসমূহ)
+            UnifiedCalendarEventsSliderCard(
                 hijriDate = currentHijriDate,
-                nextEvent = nextSignificantEvent,
-                onOpenCalendar = { viewModel.openHijriCalendar(true) }
+                banglaDate = currentBanglaDate,
+                upcomingEvents = upcomingIslamicEvents,
+                onOpenCalendar = { viewModel.openHijriCalendar(true) },
+                onOpenEvents = { viewModel.openIslamicEventsSheet(true) }
             )
 
-            // 3. MIDDLE SECTION: Formatted Daily Prayer Times Calculator Card
+            // 2. AL-HUJUR AI ASSISTANT & SACRED WISDOM (সরাসরি ভয়েস ও চ্যাটে প্রশ্ন করার সুবিধা সহ)
+            AlHujurUnifiedWisdomCard(
+                nasihot = currentNasihot,
+                verse = todayVerse,
+                currentIndex = dailyNasihotIndex,
+                totalCount = IslamicRepository.dailyNasihotList.size,
+                onNextWisdom = { viewModel.nextNasihot() },
+                onPreviousWisdom = { viewModel.previousNasihot() },
+                onOpenQuranReader = { viewModel.openQuranReader(true) },
+                onAskAiClick = onNavigateToChat,
+                onAskQuestionWithPrompt = { question ->
+                    viewModel.sendChatMessage(question)
+                    onNavigateToChat()
+                }
+            )
+
+            // 3. DAILY PRAYER TIMES CALCULATOR & COUNTDOWN (৫ ওয়াক্ত নামাজের সময় ও কাউন্টডাউন)
             DailyPrayerTimesHomeCard(
                 viewModel = viewModel
             )
 
-            // 4. DAILY AMAL TRACKER OVERVIEW (Room Database Connected)
+            // 4. RAMADAN SPECIAL HUB: Upcoming Ramadan 1447 Facilities, Sehri/Iftar Live Timings, Fast Tracker & Duas
+            RamadanSpecialHubCard(
+                viewModel = viewModel,
+                onOpenFullRamadanSchedule = { viewModel.openRamadanCalendar(true) }
+            )
+
+            // 5. DAILY AMAL TRACKER OVERVIEW (Room Database Connected)
             DailyAmalHomeOverviewCard(
                 viewModel = viewModel,
                 onNavigateToAmal = onNavigateToAmal
             )
 
-            // 5. GRID SECTION: Large Main Buttons
+            // 6. TAZKIYAH & BAD HABIT BREAKER CARD (খারাপ অভ্যাস বর্জন ও আত্মশুদ্ধি ট্র্যাকার)
+            TazkiyahHabitHomeCard(
+                habits = badHabits,
+                onOpenFullTazkiyah = { viewModel.openTazkiyahSheet(true) },
+                onOpenEmergencySos = { viewModel.openWaswasahSosDialog(true) },
+                onMarkClean = { habitId -> viewModel.markHabitCleanToday(habitId) }
+            )
+
+            // 7. SADAKAH JARIYAH & VIRAL DAWAH HUB (ইসলামিক কুইজ, সোশ্যাল স্টোরি মেকার ও উম্মাহ দরূদ চেইন)
+            ViralDawahHubCard(
+                onOpenQuiz = { viewModel.openQuizDialog(true) },
+                onOpenDawahCardMaker = { viewModel.openDawahCardMakerDialog(true) },
+                onOpenFajrBuddy = { viewModel.openFajrBuddyDialog(true) }
+            )
+
+            // 8. GRID SECTION: Large Main Buttons
             MainActionsGrid(
                 onAskAiClick = onNavigateToChat,
                 onHijriCalendarClick = { viewModel.openHijriCalendar(true) },
@@ -148,11 +203,19 @@ fun HomeScreen(
                 onLibraryClick = { viewModel.openLibrarySheet(true) }
             )
 
-            // 6. BOTTOM SECTION: Horizontal Scroll of Quick Tools
+            // 9. BOTTOM SECTION: Horizontal Scroll of Quick Tools & Unique Facilities
             QuickToolsSection(
+                onQuranReaderClick = { viewModel.openQuranReader(true) },
                 onTasbeehClick = { viewModel.openTasbeehSheet(true) },
                 onDuaClick = { viewModel.openDuaSheet(true) },
-                onQiblaClick = { viewModel.openQiblaSheet(true) }
+                onQiblaClick = { viewModel.openQiblaSheet(true) },
+                onAsmaulHusnaClick = { viewModel.openAsmaulHusnaSheet(true) },
+                onZakatClick = { viewModel.openZakatSheet(true) },
+                onIslamicEventsClick = { viewModel.openIslamicEventsSheet(true) },
+                onTazkiyahClick = { viewModel.openTazkiyahSheet(true) },
+                onQuizClick = { viewModel.openQuizDialog(true) },
+                onDawahCardMakerClick = { viewModel.openDawahCardMakerDialog(true) },
+                onFajrBuddyClick = { viewModel.openFajrBuddyDialog(true) }
             )
         }
     }
@@ -173,7 +236,10 @@ fun HomeScreen(
     }
 
     if (showRamadanCalendar) {
-        RamadanCalendarDialog(onDismiss = { viewModel.openRamadanCalendar(false) })
+        RamadanCalendarDialog(
+            viewModel = viewModel,
+            onDismiss = { viewModel.openRamadanCalendar(false) }
+        )
     }
 
     if (showPrayerTimesSheet) {
@@ -201,14 +267,93 @@ fun HomeScreen(
     if (showQiblaSheet) {
         QiblaCompassDialog(onDismiss = { viewModel.openQiblaSheet(false) })
     }
+
+    if (showAsmaulHusnaSheet) {
+        AsmaulHusnaDialog(onDismiss = { viewModel.openAsmaulHusnaSheet(false) })
+    }
+
+    if (showZakatSheet) {
+        ZakatCalculatorDialog(onDismiss = { viewModel.openZakatSheet(false) })
+    }
+
+    if (showQuranReaderSheet) {
+        QuranReaderDialog(
+            viewModel = viewModel,
+            onDismiss = { viewModel.openQuranReader(false) }
+        )
+    }
+
+    if (showIslamicEventsSheet) {
+        IslamicSpecialEventsDialog(
+            viewModel = viewModel,
+            onDismiss = { viewModel.openIslamicEventsSheet(false) }
+        )
+    }
+
+    if (showTazkiyahSheet) {
+        TazkiyahHabitBreakerDialog(
+            habits = badHabits,
+            onDismiss = { viewModel.openTazkiyahSheet(false) },
+            onMarkClean = { id -> viewModel.markHabitCleanToday(id) },
+            onResetRelapse = { id -> viewModel.resetHabitRelapse(id) },
+            onAddCustomHabit = { title, reason, cat -> viewModel.addCustomBadHabit(title, reason, cat) },
+            onDeleteHabit = { id -> viewModel.deleteBadHabit(id) },
+            onOpenEmergencySos = {
+                viewModel.openTazkiyahSheet(false)
+                viewModel.openWaswasahSosDialog(true)
+            },
+            onConsultAi = { query ->
+                viewModel.openTazkiyahSheet(false)
+                viewModel.sendChatMessage(query)
+                onNavigateToChat()
+            }
+        )
+    }
+
+    if (showWaswasahSosDialog) {
+        WaswasahSosDialog(
+            onDismiss = { viewModel.openWaswasahSosDialog(false) },
+            onConsultAi = { query ->
+                viewModel.openWaswasahSosDialog(false)
+                viewModel.sendChatMessage(query)
+                onNavigateToChat()
+            }
+        )
+    }
+
+    if (showQuizDialog) {
+        IslamicQuizDialog(
+            onDismiss = { viewModel.openQuizDialog(false) }
+        )
+    }
+
+    if (showDawahCardMakerDialog) {
+        DawahCardMakerDialog(
+            onDismiss = { viewModel.openDawahCardMakerDialog(false) }
+        )
+    }
+
+    if (showFajrBuddyDialog) {
+        FajrBuddyDialog(
+            onDismiss = { viewModel.openFajrBuddyDialog(false) }
+        )
+    }
+
+    if (showAuthDialog) {
+        AuthDialog(
+            viewModel = viewModel,
+            onDismiss = { viewModel.openAuthDialog(false) }
+        )
+    }
 }
 
 @Composable
 private fun AppHeaderRow(
     locationName: String,
-    hijriDate: com.example.data.model.HijriDateInfo,
+    isLoggedIn: Boolean,
+    userName: String,
     onLocationClick: () -> Unit,
-    onDateClick: () -> Unit
+    onAuthClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -217,80 +362,98 @@ private fun AppHeaderRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
-            modifier = Modifier.clickable { onDateClick() }
-        ) {
+        Column {
             Text(
-                text = "আল-হুজুর এআই",
+                text = "Islamic Mind",
                 color = IslamicGold,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
             )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = hijriDate.formattedHijriBn,
-                    color = BrightGold,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "•",
-                    color = TextMuted,
-                    fontSize = 11.sp
-                )
-                Text(
-                    text = "${com.example.data.service.HijriCalendarService.toBengaliDigits(hijriDate.gregorianDay)} ${hijriDate.gregorianMonthNameBn}",
-                    color = TextLight.copy(alpha = 0.85f),
-                    fontSize = 12.sp
-                )
-            }
+            Text(
+                text = "সহীহ দ্বীন ও আত্মিক প্রশান্তি",
+                color = TextMuted,
+                fontSize = 11.sp
+            )
         }
 
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = NavyCard,
-            border = BorderStroke(1.dp, GoldBorder),
-            modifier = Modifier.clickable { onLocationClick() }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = NavyCard,
+                border = BorderStroke(1.dp, GoldBorder),
+                modifier = Modifier.clickable { onLocationClick() }
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(EmeraldSuccess)
-                )
-                Text(
-                    text = locationName,
-                    color = TextLight,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = null,
-                    tint = IslamicGold,
-                    modifier = Modifier.size(16.dp)
-                )
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(EmeraldSuccess)
+                    )
+                    Text(
+                        text = locationName,
+                        color = TextLight,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        tint = IslamicGold,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = if (isLoggedIn) Color(0x33D4AF37) else NavyCard,
+                border = BorderStroke(1.dp, if (isLoggedIn) IslamicGold else GoldBorder),
+                modifier = Modifier
+                    .clickable { onAuthClick() }
+                    .testTag("home_auth_button")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isLoggedIn) Icons.Default.CheckCircle else Icons.Default.AccountCircle,
+                        contentDescription = "প্রোফাইল ও লগইন",
+                        tint = if (isLoggedIn) EmeraldSuccess else BrightGold,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Text(
+                        text = if (isLoggedIn) "প্রোফাইল" else "লগইন",
+                        color = if (isLoggedIn) BrightGold else TextLight,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
 }
 
 // -------------------------------------------------------------
-// 1. TOP SECTION: Scholar Greeting Card with Avatar & Daily Nasihot
+// 1. TOP SECTION: Scholar Greeting Card with Avatar & Auto-Updating Daily Nasihot
 // -------------------------------------------------------------
 @Composable
 private fun ScholarGreetingCard(
     nasihot: com.example.data.model.DailyNasihot,
-    onRefreshNasihot: () -> Unit
+    onRefreshNasihot: () -> Unit,
+    onPreviousNasihot: () -> Unit = {},
+    currentIndex: Int = 0,
+    totalCount: Int = 10
 ) {
     Card(
         modifier = Modifier
@@ -331,13 +494,13 @@ private fun ScholarGreetingCard(
                         // Scholar Avatar with golden ring
                         Box(
                             modifier = Modifier
-                                .size(56.dp)
+                                .size(54.dp)
                                 .clip(CircleShape)
                                 .border(2.dp, IslamicGold, CircleShape)
                         ) {
                             Image(
                                 painter = painterResource(id = R.drawable.img_scholar_avatar),
-                                contentDescription = "AI Hujur Scholar",
+                                contentDescription = "Islamic Mind AI Scholar",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
@@ -349,9 +512,9 @@ private fun ScholarGreetingCard(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
-                                    text = "আল-হুজুর এআই",
+                                    text = "ইসলামিক স্কলার এআই",
                                     color = TextWhite,
-                                    fontSize = 17.sp,
+                                    fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Surface(
@@ -367,72 +530,112 @@ private fun ScholarGreetingCard(
                                     )
                                 }
                             }
-                            Text(
-                                text = "দৈনিক নসিহত • ${nasihot.category}",
-                                color = IslamicGold,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FiberManualRecord,
+                                    contentDescription = null,
+                                    tint = EmeraldSuccess,
+                                    modifier = Modifier.size(8.dp)
+                                )
+                                Text(
+                                    text = "অটো-আপডেট বাণী (${com.example.data.service.HijriCalendarService.toBengaliDigits(currentIndex + 1)}/${com.example.data.service.HijriCalendarService.toBengaliDigits(totalCount)})",
+                                    color = IslamicGold,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
 
-                    IconButton(
-                        onClick = onRefreshNasihot,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .testTag("refresh_nasihot_button")
+                    // Navigation Controls: Previous, Shuffle/Next
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh Advice",
-                            tint = BrightGold,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        IconButton(
+                            onClick = onPreviousNasihot,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .testTag("previous_nasihot_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "পূর্ববর্তী বাণী",
+                                tint = BrightGold,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+
+                        IconButton(
+                            onClick = onRefreshNasihot,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .testTag("refresh_nasihot_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "পরবর্তী বাণী",
+                                tint = BrightGold,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
                     }
                 }
 
-                // Speech Bubble displaying Daily Advice
-                Surface(
-                    shape = RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
-                    color = NavySurface,
-                    border = BorderStroke(1.dp, Color(0x33D4AF37))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                // Speech Bubble displaying Daily Advice with smooth animated transition
+                AnimatedContent(
+                    targetState = nasihot,
+                    transitionSpec = {
+                        fadeIn() togetherWith fadeOut()
+                    },
+                    label = "NasihotAnimation"
+                ) { currentQuote ->
+                    Surface(
+                        shape = RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
+                        color = NavySurface,
+                        border = BorderStroke(1.dp, Color(0x33D4AF37)),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.FormatQuote,
-                                contentDescription = null,
-                                tint = IslamicGold,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FormatQuote,
+                                    contentDescription = null,
+                                    tint = IslamicGold,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = currentQuote.title,
+                                    color = BrightGold,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
                             Text(
-                                text = nasihot.title,
-                                color = BrightGold,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
+                                text = currentQuote.advice,
+                                color = TextLight,
+                                fontSize = 13.5.sp,
+                                lineHeight = 20.sp
+                            )
+
+                            Text(
+                                text = "রেফারেন্স: ${currentQuote.reference} • ${currentQuote.category}",
+                                color = TextMuted,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.align(Alignment.End)
                             )
                         }
-
-                        Text(
-                            text = nasihot.advice,
-                            color = TextLight,
-                            fontSize = 13.5.sp,
-                            lineHeight = 20.sp
-                        )
-
-                        Text(
-                            text = "রেফারেন্স: ${nasihot.reference}",
-                            color = TextMuted,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.align(Alignment.End)
-                        )
                     }
                 }
             }
@@ -687,7 +890,7 @@ private fun MainActionsGrid(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "স্থানীয়ভাবে যাচাইকৃত রমজান সময়সূচির নির্দেশনা",
+                            text = "৩০ দিনের সেহরি, ইফতার ও ফজিলতপূর্ণ আমল",
                             color = TextMuted,
                             fontSize = 11.sp
                         )
@@ -771,9 +974,17 @@ private fun MainGridButton(
 // -------------------------------------------------------------
 @Composable
 private fun QuickToolsSection(
+    onQuranReaderClick: () -> Unit,
     onTasbeehClick: () -> Unit,
     onDuaClick: () -> Unit,
-    onQiblaClick: () -> Unit
+    onQiblaClick: () -> Unit,
+    onAsmaulHusnaClick: () -> Unit,
+    onZakatClick: () -> Unit,
+    onIslamicEventsClick: () -> Unit,
+    onTazkiyahClick: () -> Unit = {},
+    onQuizClick: () -> Unit = {},
+    onDawahCardMakerClick: () -> Unit = {},
+    onFajrBuddyClick: () -> Unit = {}
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
@@ -784,13 +995,13 @@ private fun QuickToolsSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "জরুরি টুলস",
+                text = "জরুরি টুলস ও সুবিধা",
                 color = IslamicGold,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "সোয়াইপ করুন",
+                text = "সোয়াইপ করুন ➜",
                 color = TextMuted,
                 fontSize = 12.sp
             )
@@ -802,6 +1013,60 @@ private fun QuickToolsSection(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            QuickToolPill(
+                title = "ইসলামিক কুইজ",
+                subtitle = "মেধা পরীক্ষা ও চ্যালেঞ্জ",
+                icon = Icons.Default.EmojiEvents,
+                badge = "কুইজ 🏆",
+                onClick = onQuizClick,
+                testTag = "quick_tool_quiz"
+            )
+
+            QuickToolPill(
+                title = "সোশ্যাল স্টোরি মেকার",
+                subtitle = "১-ক্লিকে আয়াত স্ট্যাটাস",
+                icon = Icons.Outlined.PhotoCamera,
+                badge = "দাওয়াহ ✨",
+                onClick = onDawahCardMakerClick,
+                testTag = "quick_tool_dawah_maker"
+            )
+
+            QuickToolPill(
+                title = "ফজর ওয়েক-আপ ফ্রেন্ড",
+                subtitle = "হোয়াটসঅ্যাপে ফজর দাওয়াহ",
+                icon = Icons.Outlined.WbTwilight,
+                badge = "সুন্নাহ 🌅",
+                onClick = onFajrBuddyClick,
+                testTag = "quick_tool_fajr_buddy"
+            )
+
+            QuickToolPill(
+                title = "খারাপ অভ্যাস বর্জন",
+                subtitle = "আত্মশুদ্ধি ও নফস নিয়ন্ত্রণ",
+                icon = Icons.Default.Shield,
+                badge = "তাজকিয়াহ",
+                onClick = onTazkiyahClick,
+                testTag = "quick_tool_tazkiyah"
+            )
+
+            QuickToolPill(
+                title = "বিশেষ দিন ও দিন গণনা",
+                subtitle = "হিজরি তাৎপর্যপূর্ণ দিবসসমূহ",
+                icon = Icons.Outlined.EventAvailable,
+                badge = "কাউন্টডাউন",
+                onClick = onIslamicEventsClick,
+                testTag = "quick_tool_islamic_events"
+            )
+
+            QuickToolPill(
+                title = "পবিত্র কুরআন রিডার",
+                subtitle = "আয়াতভিত্তিক তিলাওয়াত ও সার্চ",
+                icon = Icons.AutoMirrored.Filled.MenuBook,
+                badge = "কুরআন",
+                onClick = onQuranReaderClick,
+                testTag = "quick_tool_quran_reader"
+            )
+
             QuickToolPill(
                 title = "ডিজিটাল তাসবীহ",
                 subtitle = "জিকির গণনা (৩৩/৯৯)",
@@ -827,6 +1092,24 @@ private fun QuickToolsSection(
                 badge = "মক্কা",
                 onClick = onQiblaClick,
                 testTag = "quick_tool_qibla"
+            )
+
+            QuickToolPill(
+                title = "আসমাউল হুসনা",
+                subtitle = "আল্লাহর ৯৯টি পবিত্র নাম",
+                icon = Icons.Default.Star,
+                badge = "ফজিলত",
+                onClick = onAsmaulHusnaClick,
+                testTag = "quick_tool_asmaul_husna"
+            )
+
+            QuickToolPill(
+                title = "যাকাত ক্যালকুলেটর",
+                subtitle = "সম্পদ ও নিসাব পরিমাপ",
+                icon = Icons.Default.Calculate,
+                badge = "শারঈ হিসাব",
+                onClick = onZakatClick,
+                testTag = "quick_tool_zakat"
             )
         }
     }
@@ -912,50 +1195,282 @@ private fun QuickToolPill(
 // -------------------------------------------------------------
 
 @Composable
-fun RamadanCalendarDialog(onDismiss: () -> Unit) {
+fun RamadanCalendarDialog(
+    viewModel: AlHujurViewModel,
+    onDismiss: () -> Unit
+) {
+    val currentLocation by viewModel.currentLocation.collectAsState()
+    val context = LocalContext.current
+    var selectedCity by remember { mutableStateOf(currentLocation.cityName) }
+    var selectedTab by remember { mutableStateOf(0) } // 0: Timetable, 1: Duas, 2: Tarabi & Fitrah
+
+    val offsetMinutes = remember(selectedCity) {
+        IslamicRepository.getDistrictOffsetMinutes(selectedCity)
+    }
+
+    val ramadanDays = remember(selectedCity, offsetMinutes) {
+        IslamicRepository.getRamadan30Days(offsetMinutes)
+    }
+
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.9f)
+                .testTag("ramadan_calendar_dialog"),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = DeepNavy),
             border = BorderStroke(1.5.dp, IslamicGold)
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(18.dp)
             ) {
+                // Top Title & Close Button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "রমজান সময়সূচি",
-                        color = BrightGold,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "বন্ধ করুন",
-                            tint = TextLight
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.NightsStay,
+                                contentDescription = null,
+                                tint = BrightGold,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "পবিত্র মাহে রমজান",
+                                color = BrightGold,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Text(
+                            text = "স্থানীয়ভাবে যাচাইকৃত সময়সূচি অনুসরণ করুন",
+                            color = TextMuted,
+                            fontSize = 11.5.sp
                         )
                     }
+                    IconButton(onClick = onDismiss) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "বন্ধ করুন", tint = TextLight)
+                    }
                 }
-                Text(
-                    text = "যাচাইকৃত সেহরি ও ইফতারের তালিকা এখনও উপলব্ধ নয়।",
-                    color = TextWhite,
-                    fontSize = 14.sp
-                )
-                Text(
-                    text = "আগের সংস্করণে নমুনা গণনা থেকে তৈরি সময় দেখানো হতো, " +
-                        "যা ধর্মীয় সময় নির্ধারণের জন্য নির্ভরযোগ্য নয়। " +
-                        "অনুগ্রহ করে আপনার এলাকার ইসলামিক ফাউন্ডেশন বা মসজিদের " +
-                        "যাচাইকৃত সময়সূচি অনুসরণ করুন।",
-                    color = TextMuted,
-                    fontSize = 13.sp
-                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Tab Row
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = NavySurface,
+                    contentColor = BrightGold,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                ) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = { Text("সময়সূচি", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = { Text("রমজানের দোয়া", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    )
+                    Tab(
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
+                        text = { Text("তারাবীহ ও ফিতরা", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                when (selectedTab) {
+                    0 -> {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = NavySurface,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text("যাচাইকৃত রমজান সময়সূচি পাওয়া যায়নি",
+                                    color = BrightGold, fontWeight = FontWeight.Bold)
+                                Text("আগের ৩০ দিনের সময়গুলো অনুমান করে তৈরি করা হতো; " +
+                                    "সেগুলো সেহরি বা ইফতারের জন্য নিরাপদ নয়। " +
+                                    "আপনার জেলার ইসলামিক ফাউন্ডেশন বা মসজিদের " +
+                                    "প্রকাশিত সময়সূচি অনুসরণ করুন।", color = TextLight)
+                            }
+                        }
+                    }
+                    1 -> {
+                        // TAB 1: RAMADAN DUAS
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(IslamicRepository.ramadanSpecialDuas) { dua ->
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = NavySurface,
+                                    border = BorderStroke(1.dp, Color(0x33D4AF37)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = dua.title,
+                                                color = BrightGold,
+                                                fontSize = 13.5.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                    val clip = ClipData.newPlainText(
+                                                        dua.title,
+                                                        "${dua.title}\n\n${dua.arabicText}\n\nউচ্চারণ: ${dua.pronunciationBn}\n\nঅর্থ: ${dua.meaningBn}\n[${dua.reference}]"
+                                                    )
+                                                    clipboard.setPrimaryClip(clip)
+                                                    Toast.makeText(context, "দোয়া কপি হয়েছে!", Toast.LENGTH_SHORT).show()
+                                                },
+                                                modifier = Modifier.size(28.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.ContentCopy,
+                                                    contentDescription = "কপি",
+                                                    tint = IslamicGold,
+                                                    modifier = Modifier.size(15.dp)
+                                                )
+                                            }
+                                        }
+
+                                        Text(
+                                            text = "পাঠ্য সময়: ${dua.occasion}",
+                                            color = EmeraldSuccess,
+                                            fontSize = 11.sp
+                                        )
+
+                                        // Arabic
+                                        Text(
+                                            text = dua.arabicText,
+                                            color = TextWhite,
+                                            fontSize = 16.sp,
+                                            lineHeight = 26.sp,
+                                            textAlign = TextAlign.End,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+
+                                        // Pronunciation
+                                        Text(
+                                            text = "উচ্চারণ: ${dua.pronunciationBn}",
+                                            color = TextLight,
+                                            fontSize = 12.sp,
+                                            lineHeight = 17.sp
+                                        )
+
+                                        // Meaning
+                                        Text(
+                                            text = "অর্থ: \"${dua.meaningBn}\"",
+                                            color = BrightGold,
+                                            fontSize = 12.5.sp,
+                                            lineHeight = 18.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+
+                                        Text(
+                                            text = "উৎস: ${dua.reference}",
+                                            color = TextMuted,
+                                            fontSize = 10.5.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    2 -> {
+                        // TAB 2: TARABI & FITRAH GUIDE
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            item {
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = NavySurface,
+                                    border = BorderStroke(1.dp, IslamicGold.copy(alpha = 0.5f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "তারাবীহ নামাজের ২০ রাকাত সুন্নাহ নিয়ম",
+                                            color = BrightGold,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "১. এশার ফরজ ও দুই রাকাত সুন্নাত আদায়ের পর তারাবীহ নামাজ পড়তে হয়।\n২. তারাবীহ মোট ২০ রাকাত, দুই রাকাত করে ১০ সালামে সমাপ্ত করা সুন্নাতে মুয়াক্কাদা।\n৩. প্রতি চার রাকাত পর কিছু সময় বিশ্রাম নিয়ে তাসবীহ ও ইস্তিগফার পাঠ করা মুস্তাহাব।\n৪. তারাবীহ শেষে তিন রাকাত বিতর নামাজ জামাতে বা একাকী আদায় করতে হয়।",
+                                            color = TextLight,
+                                            fontSize = 12.sp,
+                                            lineHeight = 18.sp
+                                        )
+                                    }
+                                }
+                            }
+
+                            item {
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = NavySurface,
+                                    border = BorderStroke(1.dp, IslamicGold.copy(alpha = 0.5f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "সাদাকাতুল ফিতরা হিসাব (ইসলামিক ফাউন্ডেশন)",
+                                            color = BrightGold,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "ঈদের দিন সুবহে সাদিকের সময় যার নিকট জাকাতের নেসাব পরিমাণ সম্পদ অতিরিক্ত থাকবে, তার নিজের ও পরিবারের পক্ষ থেকে ফিতরা দেওয়া ওয়াজিব।",
+                                            color = TextLight,
+                                            fontSize = 12.sp,
+                                            lineHeight = 17.sp
+                                        )
+                                        Text(
+                                            text = "ফিতরার হার প্রতি বছর পরিবর্তিত হতে পারে। বর্তমান বছরের সরকারি নির্ধারিত হার যাচাই করুন।",
+                                            color = TextWhite,
+                                            fontSize = 12.sp,
+                                            lineHeight = 19.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -982,10 +1497,7 @@ fun PrayerTimesDialog(viewModel: AlHujurViewModel, onDismiss: () -> Unit) {
     }
 
     val requestNotificationPermissionAndToggle = {
-        if (prayerNotifications) {
-            // Disabling notifications must never require runtime permission.
-            viewModel.togglePrayerNotifications()
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val hasPermission = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.POST_NOTIFICATIONS

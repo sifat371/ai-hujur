@@ -21,6 +21,8 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
         val prayerArabic = intent.getStringExtra(PrayerNotificationScheduler.EXTRA_PRAYER_ARABIC) ?: ""
         val prayerId = intent.getIntExtra(PrayerNotificationScheduler.EXTRA_PRAYER_ID, 100)
         val locationName = intent.getStringExtra(PrayerNotificationScheduler.EXTRA_LOCATION_NAME) ?: "ঢাকা"
+        val latitude = intent.getDoubleExtra(PrayerNotificationScheduler.EXTRA_LATITUDE, LocationService.DHAKA.latitude)
+        val longitude = intent.getDoubleExtra(PrayerNotificationScheduler.EXTRA_LONGITUDE, LocationService.DHAKA.longitude)
 
         Log.d("PrayerAlarmReceiver", "Received 10-min alarm for $prayerName ($prayerTimeStr) at $locationName")
 
@@ -71,12 +73,11 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
         notificationManager.notify(prayerId, notification)
 
         // Reschedule upcoming alarms to keep continuous rotation active
-        val savedLocation = settings.location
         PrayerNotificationScheduler.scheduleAllPrayerAlerts(
             context = context,
-            latitude = savedLocation.latitude,
-            longitude = savedLocation.longitude,
-            locationName = savedLocation.cityName
+            latitude = settings.location.latitude,
+            longitude = settings.location.longitude,
+            locationName = settings.location.cityName
         )
     }
 

@@ -1,8 +1,8 @@
 package com.example.ui.screens
 
 import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Build
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.ui.components.AuthDialog
 import com.example.ui.components.IslamicGeometricBackground
 import com.example.ui.components.PrivacyPolicyDialog
 import com.example.ui.components.PrivacyPolicySummaryCard
@@ -44,32 +45,27 @@ fun ProfileScreen(
     modifier: Modifier = Modifier
 ) {
     val userName by viewModel.userName.collectAsState()
+    val isUserLoggedIn by viewModel.isUserLoggedIn.collectAsState()
+    val userEmail by viewModel.userEmail.collectAsState()
+    val showAuthDialog by viewModel.showAuthDialog.collectAsState()
     val spiritualGoal by viewModel.spiritualGoal.collectAsState()
     val prayerNotifications by viewModel.prayerNotificationsEnabled.collectAsState()
+    val aiDailyReminders by viewModel.aiDailyRemindersEnabled.collectAsState()
     val calculationMethod by viewModel.calculationMethod.collectAsState()
-    val recentAmalHistory by viewModel.recentAmalHistory.collectAsState()
-    val totalQuranPages by viewModel.totalQuranPages.collectAsState()
+    val history by viewModel.recentAmalHistory.collectAsState()
+    val totalPages by viewModel.totalQuranPages.collectAsState()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showPrivacyPolicyDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    var requestTestNotification by remember { mutableStateOf(false) }
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+    val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) {
-            if (requestTestNotification) viewModel.sendTestPrayerAlert()
-            else if (!viewModel.prayerNotificationsEnabled.value) {
-                viewModel.togglePrayerNotifications()
-            }
-        }
-        requestTestNotification = false
+        if (granted && !viewModel.prayerNotificationsEnabled.value) viewModel.togglePrayerNotifications()
     }
-    val permissionMissing = {
+    val needsPermission = {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(
-                context, Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
     }
 
     Box(
@@ -99,43 +95,36 @@ fun ProfileScreen(
                 fontWeight = FontWeight.Bold
             )
 
-            // User Profile Card
+            // User Profile & Authentication Card
             UserProfileCard(
                 name = userName,
+                email = userEmail,
+                isLoggedIn = isUserLoggedIn,
                 goal = spiritualGoal,
-                onEditClick = { showEditProfileDialog = true }
+                onEditClick = { showEditProfileDialog = true },
+                onLoginClick = { viewModel.openAuthDialog(true) },
+                onLogoutClick = { viewModel.logout() }
             )
 
             // Spiritual Stats / Streak Card
             SpiritualStatsCard(
-                fastedDays = recentAmalHistory.count { it.fastingDone },
-                completedPrayers = recentAmalHistory.sumOf { it.prayerCompletionCount() },
-                quranPages = totalQuranPages
+                fastingDays = history.count { it.fastingDone },
+                prayers = history.sumOf { it.prayerCompletionCount() },
+                pages = totalPages
             )
 
             // Notification & Reminder Toggles Section
             TogglesSettingsCard(
                 prayerNotifications = prayerNotifications,
                 onTogglePrayerNotifications = {
-                    if (prayerNotifications) {
-                        viewModel.togglePrayerNotifications()
-                    } else if (permissionMissing()) {
-                        requestTestNotification = false
-                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    } else {
-                        viewModel.togglePrayerNotifications()
-                    }
+                    if (prayerNotifications || !needsPermission()) viewModel.togglePrayerNotifications()
+                    else permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 },
-                onSendTestAlert = {
-                    if (permissionMissing()) {
-                        requestTestNotification = true
-                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        false
-                    } else {
-                        viewModel.sendTestPrayerAlert()
-                        true
-                    }
-                }
+                onSendTestAlert = { viewModel.sendTestPrayerAlert() },
+                aiDailyReminders = aiDailyReminders,
+                onToggleAiReminders = { viewModel.toggleAiReminders() },
+                calculationMethod = calculationMethod,
+                onSelectMethod = { viewModel.updateProfile(userName, spiritualGoal, it) }
             )
 
             // Privacy Policy & Security Card
@@ -168,13 +157,24 @@ fun ProfileScreen(
             onDismiss = { showPrivacyPolicyDialog = false }
         )
     }
+
+    if (showAuthDialog) {
+        AuthDialog(
+            viewModel = viewModel,
+            onDismiss = { viewModel.openAuthDialog(false) }
+        )
+    }
 }
 
 @Composable
 private fun UserProfileCard(
     name: String,
+    email: String,
+    isLoggedIn: Boolean,
     goal: String,
-    onEditClick: () -> Unit
+    onEditClick: () -> Unit,
+    onLoginClick: () -> Unit,
+    onLogoutClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -184,74 +184,191 @@ private fun UserProfileCard(
         colors = CardDefaults.cardColors(containerColor = NavyCard),
         border = BorderStroke(1.dp, GoldBorder)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(18.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(NavySurface)
-                        .border(2.dp, IslamicGold, CircleShape),
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = BrightGold,
-                        modifier = Modifier.size(32.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(CircleShape)
+                            .background(NavySurface)
+                            .border(2.dp, IslamicGold, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isLoggedIn) Icons.Default.Person else Icons.Default.PersonOutline,
+                            contentDescription = null,
+                            tint = BrightGold,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = name,
+                                color = TextWhite,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (isLoggedIn) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = EmeraldContainer
+                                ) {
+                                    Text(
+                                        text = "লোকাল",
+                                        color = EmeraldSuccess,
+                                        fontSize = 9.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        if (isLoggedIn && email.isNotBlank()) {
+                            Text(
+                                text = email,
+                                color = IslamicGold,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        } else {
+                            Text(
+                                text = "লগইন না করা অবস্থায় অতিথি মোড",
+                                color = TextMuted,
+                                fontSize = 11.5.sp
+                            )
+                        }
+
+                        Text(
+                            text = "Islamic Mind সদস্য • ১৪৪৭ হিজরি",
+                            color = TextMuted,
+                            fontSize = 11.sp
+                        )
+                    }
                 }
 
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(
-                        text = name,
-                        color = TextWhite,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "রমজানের লক্ষ্য: $goal",
-                        color = IslamicGold,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = "লোকাল প্রোফাইল • সাইন-ইন নেই",
-                        color = TextMuted,
-                        fontSize = 11.sp
-                    )
+                if (true) {
+                    IconButton(
+                        onClick = onEditClick,
+                        modifier = Modifier.testTag("edit_profile_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "প্রোফাইল সম্পাদনা",
+                            tint = BrightGold
+                        )
+                    }
                 }
             }
 
-            IconButton(
-                onClick = onEditClick,
-                modifier = Modifier.testTag("edit_profile_button")
+            // Sync and Status Banner
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = NavySurface,
+                border = BorderStroke(1.dp, Color(0x33D4AF37))
             ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "প্রোফাইল সম্পাদনা",
-                    tint = BrightGold
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isLoggedIn) Icons.Default.CloudDone else Icons.Default.CloudOff,
+                            contentDescription = null,
+                            tint = if (isLoggedIn) EmeraldSuccess else IslamicGold,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = if (isLoggedIn) "লোকাল ডেটা • কোনো ক্লাউড সিঙ্ক নেই" else "এই ডিভাইসে আমল ও বুকমার্ক সংরক্ষিত হয়",
+                            color = TextLight,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    if (!isLoggedIn) {
+                        Button(
+                            onClick = onLoginClick,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = IslamicGold,
+                                contentColor = MidnightBlue
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text("ক্লাউড নেই", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        TextButton(
+                            onClick = onLogoutClick,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Text("লগআউট", color = Color(0xFFFF8A80), fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+
+            // Goal chip
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = DeepNavy,
+                border = BorderStroke(1.dp, Color(0x22D4AF37))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.TrackChanges,
+                        contentDescription = null,
+                        tint = IslamicGold,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "রমজানের লক্ষ্য: $goal",
+                        color = TextLight,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun SpiritualStatsCard(
-    fastedDays: Int,
-    completedPrayers: Int,
-    quranPages: Int
-) {
+private fun SpiritualStatsCard(fastingDays: Int, prayers: Int, pages: Int) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -265,9 +382,9 @@ private fun SpiritualStatsCard(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            StatItem(value = "$fastedDays দিন", label = "রোজার লগ (সাম্প্রতিক)", icon = Icons.Default.LocalFireDepartment, tint = BrightGold)
-            StatItem(value = "$completedPrayers", label = "নামাজ লগ (সাম্প্রতিক)", icon = Icons.Default.CheckCircle, tint = EmeraldSuccess)
-            StatItem(value = "$quranPages পৃষ্ঠা", label = "মোট কুরআন লগ", icon = Icons.AutoMirrored.Filled.MenuBook, tint = CoralAccent)
+            StatItem(value = "$fastingDays দিন", label = "রোজার লগ (সাম্প্রতিক)", icon = Icons.Default.LocalFireDepartment, tint = BrightGold)
+            StatItem(value = "$prayers", label = "নামাজ লগ (সাম্প্রতিক)", icon = Icons.Default.CheckCircle, tint = EmeraldSuccess)
+            StatItem(value = "$pages পৃষ্ঠা", label = "কুরআন পৃষ্ঠা লগ", icon = Icons.AutoMirrored.Filled.MenuBook, tint = CoralAccent)
         }
     }
 }
@@ -290,9 +407,17 @@ private fun StatItem(
 private fun TogglesSettingsCard(
     prayerNotifications: Boolean,
     onTogglePrayerNotifications: () -> Unit,
-    onSendTestAlert: () -> Boolean
+    onSendTestAlert: () -> Unit,
+    aiDailyReminders: Boolean,
+    onToggleAiReminders: () -> Unit,
+    calculationMethod: String,
+    onSelectMethod: (String) -> Unit
 ) {
+    var expandedMethodMenu by remember { mutableStateOf(false) }
     var testAlertSent by remember { mutableStateOf(false) }
+    // Other methods are not implemented in the prayer calculator.
+    val methods = listOf("১৮° টোয়াইলাইট / হানাফি আসর (আনুমানিক)")
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -368,7 +493,8 @@ private fun TogglesSettingsCard(
                 ) {
                     OutlinedButton(
                         onClick = {
-                            testAlertSent = onSendTestAlert()
+                            onSendTestAlert()
+                            testAlertSent = true
                         },
                         shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(1.dp, IslamicGold.copy(alpha = 0.7f)),
@@ -393,7 +519,7 @@ private fun TogglesSettingsCard(
 
                     if (testAlertSent) {
                         Text(
-                            text = "টেস্ট নোটিফিকেশন অনুরোধ করা হয়েছে",
+                            text = "✓ টেস্ট নোটিফিকেশন পাঠানো হয়েছে",
                             color = EmeraldSuccess,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium
@@ -404,18 +530,115 @@ private fun TogglesSettingsCard(
 
             HorizontalDivider(color = Color(0x22D4AF37))
 
-            // The application currently only implements 18° twilight angles
-            // with Hanafi Asr. Do not offer fake selection of unsupported methods.
-            Text(
-                text = "বর্তমান গণনা: ফজর ও এশা ১৮°; আসর হানাফি পদ্ধতি",
-                color = TextLight,
-                fontSize = 13.sp
-            )
-            Text(
-                text = "সময়গুলো আনুমানিক। স্থানীয় কর্তৃপক্ষের প্রকাশিত সময় যাচাই করুন।",
-                color = TextMuted,
-                fontSize = 11.sp
-            )
+            // AI Daily Reminders Toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onToggleAiReminders() },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = BrightGold,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column {
+                        Text(
+                            text = "দৈনিক নসিহত ও সেহরি রিমাইন্ডার",
+                            color = TextWhite,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "এই রিমাইন্ডার এখনও চালু হয়নি (শুধু পছন্দ সংরক্ষিত হয়)",
+                            color = TextMuted,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
+                Switch(
+                    checked = aiDailyReminders,
+                    onCheckedChange = { onToggleAiReminders() },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MidnightBlue,
+                        checkedTrackColor = BrightGold,
+                        uncheckedThumbColor = TextMuted,
+                        uncheckedTrackColor = NavySurface
+                    ),
+                    modifier = Modifier.testTag("toggle_ai_daily_reminders")
+                )
+            }
+
+            HorizontalDivider(color = Color(0x22D4AF37))
+
+            // Calculation Method Dropdown Selector
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "বর্তমান আনুমানিক নামাজের সময় গণনা",
+                    color = TextLight,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = NavySurface,
+                    border = BorderStroke(1.dp, Color(0x33D4AF37)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { expandedMethodMenu = true }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = calculationMethod,
+                            color = BrightGold,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            tint = IslamicGold
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = expandedMethodMenu,
+                        onDismissRequest = { expandedMethodMenu = false },
+                        modifier = Modifier.background(DeepNavy)
+                    ) {
+                        methods.forEach { method ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = method,
+                                        color = if (method == calculationMethod) BrightGold else TextLight,
+                                        fontSize = 13.sp
+                                    )
+                                },
+                                onClick = {
+                                    onSelectMethod(method)
+                                    expandedMethodMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -452,7 +675,7 @@ private fun AboutAppCard(
                 )
             }
             Text(
-                text = "আল-হুজুর এআই হলো বাংলাদেশের মুসলিমদের জন্য আধুনিক ইসলামিক সহকারী অ্যাপ। ইসলামিক প্রশ্নে এআই-সহায়ক তথ্য, আনুমানিক নামাজের সময়সূচি, ডিজিটাল তাসবিহ, কিবলা কম্পাস ও আমল ট্র্যাকারসহ পরিপূর্ণ অভিজ্ঞতা প্রদান করে।",
+                text = "আল-হুজুর এআই হলো বাংলাদেশের মুসলিমদের জন্য আধুনিক ইসলামিক সহকারী অ্যাপ। পবিত্র কুরআন ও সুন্নাহর ভিত্তিতে ইসলামিক প্রশ্নের তাৎক্ষণিক সমাধান, আনুমানিক নামাজের সময়সূচি, ডিজিটাল তাসবিহ, কিবলা কম্পাস ও আমল ট্র্যাকারসহ পরিপূর্ণ অভিজ্ঞতা প্রদান করে।",
                 color = TextMuted,
                 fontSize = 12.sp,
                 lineHeight = 18.sp

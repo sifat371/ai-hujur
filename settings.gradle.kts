@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Al-Hujur AI"
+rootProject.name = "Islamic Mind"
 
 include(":app")

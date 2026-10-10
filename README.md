@@ -1,35 +1,33 @@
-# Al-Hujur AI
+# AI Hujur — v9 QA Integration
 
-Bengali-language Islamic companion Android application built with Kotlin and Jetpack Compose.
+This branch merges the expanded v8 app features from `islamic-mind (4).zip` with the core safety fixes introduced in `main`.
 
-> **Project handover / maintenance baseline:** This repository is maintained by [@sifat371](https://github.com/sifat371). The existing application source was provided by the previous maintainer and originates from [mdhasibulhasanofficial-beep/Ai-hujur-](https://github.com/mdhasibulhasanofficial-beep/Ai-hujur-), baseline commit [bca9a04](https://github.com/mdhasibulhasanofficial-beep/Ai-hujur-/commit/bca9a04673e538f7f33f83359502d06c6c63ec98) (September 22, 2026). This is a source snapshot import; the supplied ZIP does not contain the original Git commit history.
+The v9-qa version is **for local and browser-emulator testing only**. Do not send it to Google Play production.
 
-## Project status
+## What is included
 
-**Under takeover audit; production readiness not yet verified.** The repository includes a prayer schedule, Hijri calendar, daily Amal tracker, Scholar AI (Gemini), community forum prototype, and Bengali UI. Some visible features are not complete; avoid treating the app as production-ready before a build, device testing, and verification of prayer-time and religious citations.
+- Quran verse reader, bookmarking, search; Islamic quizzes and other v8 UI modules.
+- v1 → v2 non-destructive Room migration for the additional Quran verse table.
+- Local persisted settings and prayer opt-in, location, profile and Hijri adjustment.
+- Prayer calculations refreshed across date changes; after Isha tomorrow's actual estimated Fajr is used.
+- Android speech recognition instead of fabricated questions.
+- Simulated login replaced with honest guest-only availability notice.
+- Gemini failures return an explicit unavailability message, not invented religious rulings.
+- 30-day Ramadan fabricated times are removed from the UI.
+- Displayed profile worship statistics come from Room, not fake values.
+- Better local data consistency for Salah, Quran, Dhikr logs.
 
-## Android stack
+## Known limitations
 
-- Kotlin / Jetpack Compose / Android Gradle Plugin
-- Android Room for local Amal activity history
-- HTTP-based Gemini client (currently runs on-device and requires security hardening)
-- Android alarm and location services
+1. Gemini requires a protected server gateway and verified religious citation review for production. Release builds deliberately contain no Gemini key; debug builds may use an optional developer-only key.
+2. Online Google/email login, real cloud backup, shared forums, automatic daily AI reminders, and verified 30-day Sehri/Iftar schedules are **not implemented**, and UI must not claim otherwise.
+3. Quran seed dataset is a partial offline sample, not verified as a full Quran corpus; content must be independently checked.
+4. Prayer times are astronomical estimates and must be compared with an authoritative local schedule.
+5. Release keystore must be supplied by authorized Play Console owner. Never fall back to debug signing.
+6. The v8 ZIP provenance is not cryptographically proven identical to Google Play's version 8 artifact.
 
-## Build preparation
+## Development build
 
-Open the project in Android Studio and sync Gradle. A Gradle wrapper **JAR is not included** in the upstream snapshot; it must be restored using a trusted Gradle installation before command-line wrapper builds can run.
+Build on GitHub Actions after uploading this source. The CI pipeline inherited from the GitHub repository runs `:app:assembleDebug :app:testDebugUnitTest`, and publishes a debug APK artifact on success.
 
-An `.env.example` placeholder is provided. Keep actual API keys and signing secrets out of Git; **do not ship a production Gemini API key embedded in a mobile APK**. This app's Gemini integration needs to be moved behind a controlled backend before production release.
-
-## Audit priorities
-
-1. Verify local build and run on a physical Android device.
-2. Resolve release signing fallback, dependency/build and CI issues.
-3. Persist prayer preferences and location correctly across restart/reboot.
-4. Replace fake microphone behavior and mark forum as local-only until a server is implemented.
-5. Add source-validated religious AI answers, safer Gemini routing and explicit error states.
-6. Add database migrations, privacy policy review and sufficient automated tests.
-
-## Ownership and attribution
-
-The original contributors retain credit for their contributions. Before public redistribution or commercial release, confirm applicable source/asset redistribution permissions with the previous owner. No LICENSE file was supplied with the original snapshot.
+This source package was prepared for integration and **has not yet passed a full Android build** in this workspace.
